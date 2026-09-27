@@ -2,18 +2,32 @@
 module hgraph.std part stream
 
 operator sample<T>(signal: signal, ts: T) -> T
+
 operator drop<T>(ts: T, const count: i64 = 1) -> T
+
 operator dedup<T>(ts: T) -> T
+
 operator filter_<T>(condition: bool, ts: T) -> T
+
 operator take<T>(ts: T, const count: i64 = 1) -> T
+
 operator freeze<T>(predicate: bool, ts: T) -> T
+
 operator until_true(ts: bool) -> bool
+
 operator schedule(const delay: duration, const initial_delay: bool = true,
                   const max_ticks: i64 = 9223372036854775807, const use_wall_clock: bool = false) -> bool
+
 operator dedup_float(ts: f64, abs_tol: f64) -> f64
+
 operator sum<T>(ts: T) -> T
+
 operator sum_reset<T>(ts: T, reset: bool) -> T
+
 operator mean<T>(ts: T) -> f64
+
 operator min_<T>(ts: T) -> T
+
 operator max_<T>(ts: T) -> T
+
 operator tick_count(ts: signal) -> i64

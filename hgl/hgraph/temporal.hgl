@@ -2,21 +2,39 @@
 module hgraph.std part temporal
 
 operator datepart<T>(ts: T) -> datetime
+
 operator day<T>(ts: T) -> i64
+
 operator day_of_month<T>(ts: T) -> i64
+
 operator days<T>(ts: T) -> i64
+
 operator hour<T>(ts: T) -> i64
+
 operator isoweekday<T>(ts: T) -> i64
+
 operator microsecond<T>(ts: T) -> i64
+
 operator microseconds<T>(ts: T) -> i64
+
 operator minute<T>(ts: T) -> i64
+
 operator month<T>(ts: T) -> i64
+
 operator month_of_year<T>(ts: T) -> i64
+
 operator second<T>(ts: T) -> i64
+
 operator seconds<T>(ts: T) -> i64
+
 operator timestamp<T>(ts: T) -> f64
+
 operator total_seconds<T>(ts: T) -> f64
+
 operator weekday<T>(ts: T) -> i64
+
 operator year<T>(ts: T) -> i64
+
 operator last_modified_time(ts: signal) -> datetime
+
 operator last_modified_date(ts: signal) -> date

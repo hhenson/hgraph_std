@@ -2,14 +2,25 @@
 module hgraph.std part standard
 
 operator len_<S>(value: S) -> i64
+
 operator is_empty<S>(value: S) -> bool
+
 operator contains_<S, I>(ts: S, item: I) -> bool
+
 operator index_of<T, const size: i64>(ts: list<T, size>, item: T) -> i64
+
 operator to_int<T>(ts: T) -> i64
+
 operator to_float<T>(ts: T) -> f64
+
 operator to_bool<T>(ts: T) -> bool
+
 operator to_date(ts: datetime) -> date
+
 operator to_datetime(ts: date) -> datetime
+
 operator collect_map<K, V>(key: K, ts: V) -> map<K, V>
+
 operator make_tsd<K, V>(key: K, value: V) -> map<K, V>
+
 operator make_tsd_remove<K, V>(key: K, value: V, remove_key: bool) -> map<K, V>
