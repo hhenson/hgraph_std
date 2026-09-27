@@ -2,41 +2,74 @@
 module hgraph.operators
 
 operator add_<L, R, O>(lhs: L, rhs: R) -> O
-properties<str, str, str> { associative, identity = "" }
-properties<i64, i64, i64> { commutative, identity = 0 }
+    properties<str, str, str> { associative, identity = "" }
+    properties<i64, i64, i64> { commutative, identity = 0 }
+
 operator sub_<L, R, O>(lhs: L, rhs: R) -> O
+
 operator mul_<L, R, O>(lhs: L, rhs: R) -> O
-properties<i64, i64, i64> { commutative, identity = 1 }
+    properties<i64, i64, i64> { commutative, identity = 1 }
+
 operator div_<L, R, O>(lhs: L, rhs: R) -> O
+
 operator floordiv_<L, R, O>(lhs: L, rhs: R) -> O
+
 operator mod_<L, R, O>(lhs: L, rhs: R) -> O
+
 operator eq_<L, R>(lhs: L, rhs: R) -> bool
+
 operator ne_<L, R>(lhs: L, rhs: R) -> bool
+
 operator lt_<L, R>(lhs: L, rhs: R) -> bool
+
 operator le_<L, R>(lhs: L, rhs: R) -> bool
+
 operator gt_<L, R>(lhs: L, rhs: R) -> bool
+
 operator ge_<L, R>(lhs: L, rhs: R) -> bool
+
 operator and_<L, R>(lhs: L, rhs: R) -> bool
-properties<bool, bool> { associative, commutative, identity = true }
+    properties<bool, bool> { associative, commutative, identity = true }
+
 operator or_<L, R>(lhs: L, rhs: R) -> bool
-properties<bool, bool> { associative, commutative, identity = false }
+    properties<bool, bool> { associative, commutative, identity = false }
+
 operator neg_<T, O>(ts: T) -> O
+
 operator not_<T>(ts: T) -> bool
+
 operator abs_<T>(ts: T) -> T
+
 operator pos_<T>(ts: T) -> T
+
 operator sign<T>(ts: T) -> T
+
 operator ln(ts: f64) -> f64
+
 operator round_(ts: f64, n_digits: i64) -> f64
+
 operator invert_<T>(ts: T) -> i64
+
 operator bit_and<T>(lhs: T, rhs: T) -> T
+
 operator bit_or<T>(lhs: T, rhs: T) -> T
+
 operator bit_xor<T>(lhs: T, rhs: T) -> T
+
 operator min_<L, R, O>(lhs: L, rhs: R) -> O
+
 operator max_<L, R, O>(lhs: L, rhs: R) -> O
+
 operator contains_(ts: str, item: str) -> bool
+
 operator substr(s: str, begin: i64, end: i64) -> str
+
 operator pow_<L, R, O>(lhs: L, rhs: R) -> O
+
 operator lshift_<T>(lhs: T, rhs: T) -> T
+
 operator rshift_<T>(lhs: T, rhs: T) -> T
+
 operator mean<L, R>(lhs: L, rhs: R) -> f64
+
 operator eq_epsilon<L, R>(lhs: L, rhs: R, const epsilon: f64 = 1e-10) -> bool

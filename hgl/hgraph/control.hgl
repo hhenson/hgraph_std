@@ -2,9 +2,15 @@
 module hgraph.std part control
 
 operator merge<S>(values: ...S) -> S
+
 operator race<S>(values: ...S) -> S
+
 operator all_(values: ...bool) -> bool
+
 operator any_(values: ...bool) -> bool
+
 operator if_true(condition: bool, const tick_once_only: bool = false) -> bool
+
 operator null_sink(ts: signal)
+
 operator pass_through<T>(ts: T) -> T
