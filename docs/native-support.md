@@ -24,3 +24,8 @@ helpers are ordinary native declarations. See the
 The library's HGL tests state observable values, absence of ticks, admission
 and error behaviour. The audit repository records cross-runtime results;
 generated C++ or Rust is compiler validation output, never a library source.
+
+Known inherited gap: `filter_` may fail to resynchronize after its condition
+becomes invalid and reopens. The extracted body is unchanged; the
+[follow-up](https://github.com/hhenson/hgraph_std/issues/2) requires a reasoned
+invalidation scenario and independent Python/C++ comparison before correction.
