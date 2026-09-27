@@ -4,97 +4,96 @@ module hgraph.operators part operators_impl
 # Runtime bodies use scalar expressions and exposed native value functions.
 # Existing core temporal operators remain installed under their own identities.
 
-use hgraph.std as core
 use hgraph.native as native
 
 impl fn add_<L, R, O>(lhs: L, rhs: R) -> O
-requires core::add_(L, R) -> O {
+requires native::add(L, R) -> O {
     when {
-        return lhs + rhs
+        return native::add(lhs, rhs)
     }
 }
 
 impl fn sub_<L, R, O>(lhs: L, rhs: R) -> O
-requires core::sub_(L, R) -> O {
+requires native::sub(L, R) -> O {
     when {
-        return lhs - rhs
+        return native::sub(lhs, rhs)
     }
 }
 
 impl fn mul_<L, R, O>(lhs: L, rhs: R) -> O
-requires core::mul_(L, R) -> O {
+requires native::mul(L, R) -> O {
     when {
-        return lhs * rhs
+        return native::mul(lhs, rhs)
     }
 }
 
 impl fn div_<L, R, O>(lhs: L, rhs: R) -> O
-requires core::div_(L, R) -> O {
+requires native::div(L, R) -> O {
     when {
-        return lhs / rhs
+        return native::div(lhs, rhs)
     }
 }
 
 impl fn floordiv_<L, R, O>(lhs: L, rhs: R) -> O
-requires core::floordiv_(L, R) -> O {
+requires native::floordiv(L, R) -> O {
     when {
-        return lhs // rhs
+        return native::floordiv(lhs, rhs)
     }
 }
 
 impl fn mod_<L, R, O>(lhs: L, rhs: R) -> O
-requires core::mod_(L, R) -> O {
+requires native::mod(L, R) -> O {
     when {
-        return lhs % rhs
+        return native::mod(lhs, rhs)
     }
 }
 
 impl fn eq_<L, R>(lhs: L, rhs: R) -> bool
-requires core::eq_(L, R) -> bool {
+requires native::eq(L, R) -> bool {
     when {
-        return lhs == rhs
+        return native::eq(lhs, rhs)
     }
 }
 
 impl fn ne_<L, R>(lhs: L, rhs: R) -> bool
-requires core::ne_(L, R) -> bool {
+requires native::ne(L, R) -> bool {
     when {
-        return lhs != rhs
+        return native::ne(lhs, rhs)
     }
 }
 
 impl fn lt_<L, R>(lhs: L, rhs: R) -> bool
-requires core::lt_(L, R) -> bool {
+requires native::lt(L, R) -> bool {
     when {
-        return lhs < rhs
+        return native::lt(lhs, rhs)
     }
 }
 
 impl fn le_<L, R>(lhs: L, rhs: R) -> bool
-requires core::le_(L, R) -> bool {
+requires native::le(L, R) -> bool {
     when {
-        return lhs <= rhs
+        return native::le(lhs, rhs)
     }
 }
 
 impl fn gt_<L, R>(lhs: L, rhs: R) -> bool
-requires core::gt_(L, R) -> bool {
+requires native::gt(L, R) -> bool {
     when {
-        return lhs > rhs
+        return native::gt(lhs, rhs)
     }
 }
 
 impl fn ge_<L, R>(lhs: L, rhs: R) -> bool
-requires core::ge_(L, R) -> bool {
+requires native::ge(L, R) -> bool {
     when {
-        return lhs >= rhs
+        return native::ge(lhs, rhs)
     }
 }
 
 impl fn neg_<T, O>(ts: T) -> O
-requires core::neg_(T) -> O {
+requires native::neg(T) -> O {
     when {
-        return -ts
+        return native::neg(ts)
     }
 }
 

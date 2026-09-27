@@ -26,3 +26,20 @@ test {
         assert eval(sliced, s: ["hgraph", _, "hgraph"], begin: [1, 2, -2], end: [3, 4, 100]) == ["gr", "ra", "ph"]
     }
 }
+
+test {
+    fn integer_add(lhs: i64, rhs: i64) -> i64 => add_(lhs, rhs)
+    fn mixed_add(lhs: i64, rhs: f64) -> f64 => add_(lhs, rhs)
+    fn text_add(lhs: str, rhs: str) -> str => add_(lhs, rhs)
+    fn integer_div(lhs: i64, rhs: i64) -> f64 => div_(lhs, rhs)
+    fn integer_floor(lhs: i64, rhs: i64) -> i64 => floordiv_(lhs, rhs)
+    fn integer_mod(lhs: i64, rhs: i64) -> i64 => mod_(lhs, rhs)
+    test native_requirements_select_scalar_overloads {
+        assert eval(integer_add, lhs: [_, 2, _, -5], rhs: [3, _, 4, _]) == [_, 5, 6, -1]
+        assert eval(mixed_add, lhs: [2, -5], rhs: [0.5, _]) == [2.5, -4.5]
+        assert eval(text_add, lhs: ["a", ""], rhs: ["b", _]) == ["ab", "b"]
+        assert eval(integer_div, lhs: [-7], rhs: [2]) == [-3.5]
+        assert eval(integer_floor, lhs: [-7], rhs: [2]) == [-4]
+        assert eval(integer_mod, lhs: [-7], rhs: [2]) == [1]
+    }
+}

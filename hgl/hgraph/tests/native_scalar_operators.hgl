@@ -1,0 +1,18 @@
+module hgraph.native part scalar_operator_tests
+
+test {
+    const fn int_sum(lhs: i64, rhs: i64) -> i64 => add(lhs, rhs)
+    const fn mixed_sum(lhs: i64, rhs: f64) -> f64 => add(lhs, rhs)
+    const fn text_sum(lhs: str, rhs: str) -> str => add(lhs, rhs)
+    const fn quotient(lhs: i64, rhs: i64) -> f64 => div(lhs, rhs)
+    const fn floor_quotient(lhs: i64, rhs: i64) -> i64 => floordiv(lhs, rhs)
+    const fn remainder(lhs: i64, rhs: i64) -> i64 => mod(lhs, rhs)
+    test scalar_operator_values {
+        assert eval(int_sum, lhs: [2, _, -5], rhs: [3, 4, _]) == [5, 6, -1]
+        assert eval(mixed_sum, lhs: [2, -5], rhs: [0.5, _]) == [2.5, -4.5]
+        assert eval(text_sum, lhs: ["a", ""], rhs: ["b", _]) == ["ab", "b"]
+        assert eval(quotient, lhs: [-7], rhs: [2]) == [-3.5]
+        assert eval(floor_quotient, lhs: [-7], rhs: [2]) == [-4]
+        assert eval(remainder, lhs: [-7], rhs: [2]) == [1]
+    }
+}
