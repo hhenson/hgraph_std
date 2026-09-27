@@ -1,0 +1,58 @@
+{
+  "files": [
+    {
+      "path": "hgl/examples/core-native-library.hgl",
+      "source_project": "hgraph",
+      "source_path": "language/stdlib/hgl/examples/core-native-library.hgl",
+      "source_revision": "2738ca7688ec13602a97dd33489f3842ab757618"
+    },
+    {
+      "path": "hgl/hgraph/control.hgl",
+      "source_project": "hgraph",
+      "source_path": "language/stdlib/hgl/hgraph/control.hgl",
+      "source_revision": "2738ca7688ec13602a97dd33489f3842ab757618"
+    },
+    {
+      "path": "hgl/hgraph/native/scalar_values.hgl",
+      "source_project": "hgraph",
+      "source_path": "language/stdlib/hgl/hgraph/native/scalar_values.hgl",
+      "source_revision": "2738ca7688ec13602a97dd33489f3842ab757618"
+    },
+    {
+      "path": "hgl/hgraph/native/scalar_values_i64.hgl",
+      "source_project": "hgraph",
+      "source_path": "language/stdlib/hgl/hgraph/native/scalar_values_i64.hgl",
+      "source_revision": "2738ca7688ec13602a97dd33489f3842ab757618"
+    },
+    {
+      "path": "hgl/hgraph/operators.hgl",
+      "source_project": "hgraph",
+      "source_path": "language/stdlib/hgl/hgraph/operators.hgl",
+      "source_revision": "2738ca7688ec13602a97dd33489f3842ab757618"
+    },
+    {
+      "path": "hgl/hgraph/standard.hgl",
+      "source_project": "hgraph",
+      "source_path": "language/stdlib/hgl/hgraph/standard.hgl",
+      "source_revision": "2738ca7688ec13602a97dd33489f3842ab757618"
+    },
+    {
+      "path": "hgl/hgraph/stream.hgl",
+      "source_project": "hgraph",
+      "source_path": "language/stdlib/hgl/hgraph/stream.hgl",
+      "source_revision": "2738ca7688ec13602a97dd33489f3842ab757618"
+    },
+    {
+      "path": "hgl/hgraph/temporal.hgl",
+      "source_project": "hgraph",
+      "source_path": "language/stdlib/hgl/hgraph/temporal.hgl",
+      "source_revision": "2738ca7688ec13602a97dd33489f3842ab757618"
+    },
+    {
+      "path": "hgl/hgraph/native/scalar_values_i64.hgl",
+      "source_project": "hgl",
+      "source_path": "crates/hgl-native/interfaces/scalar.hgl",
+      "source_revision": "6718df0b9f01a36cd7c7c47aa878cc780016b6f8"
+    }
+  ]
+}
