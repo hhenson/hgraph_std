@@ -53,6 +53,13 @@
       "source_project": "hgl",
       "source_path": "crates/hgl-native/interfaces/scalar.hgl",
       "source_revision": "6718df0b9f01a36cd7c7c47aa878cc780016b6f8"
+    },
+    {
+      "path": "hgl/hgraph/native/temporal_values.hgl",
+      "source_project": "hgraph",
+      "source_path": "language/stdlib/hgl/hgraph/native/temporal_values.hgl",
+      "source_revision": "2738ca7688ec13602a97dd33489f3842ab757618",
+      "note": "Portable declarations and HGL tests; the legacy midnight body stays in hgraph."
     }
   ]
 }
