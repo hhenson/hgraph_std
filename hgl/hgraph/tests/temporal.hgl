@@ -1,0 +1,21 @@
+module hgraph.std part temporal_tests
+
+test {
+    fn date_year(ts: date) -> i64 => year(ts)
+    fn instant_year(ts: datetime) -> i64 => year(ts)
+    fn instant_hour(ts: datetime) -> i64 => hour(ts)
+    fn duration_seconds(ts: duration) -> i64 => seconds(ts)
+
+    test date_components_elide_unchanged_values {
+        assert eval(date_year, ts: [@2024-01-01, @2024-12-31, _, @2025-01-01]) == [2024, _, _, 2025]
+    }
+
+    test instant_components_keep_repeated_ticks {
+        assert eval(instant_year, ts: [@2024-01-01T00:00Z, @2024-12-31T23:59Z]) == [2024, 2024]
+        assert eval(instant_hour, ts: [@1969-12-31T23:59Z, @1970-01-01T00:00Z]) == [23, 0]
+    }
+
+    test duration_remainders_are_normalized {
+        assert eval(duration_seconds, ts: [0us - 1us, 0us, 1d1s]) == [86399, 0, 1]
+    }
+}

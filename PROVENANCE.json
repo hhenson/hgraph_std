@@ -60,6 +60,66 @@
       "source_path": "language/stdlib/hgl/hgraph/native/temporal_values.hgl",
       "source_revision": "2738ca7688ec13602a97dd33489f3842ab757618",
       "note": "Portable declarations and HGL tests; the legacy midnight body stays in hgraph."
+    },
+    {
+      "path": "hgl/hgraph/impl/operators.hgl",
+      "source_project": "hgraph",
+      "source_path": "language/stdlib/hgl/hgraph/operators.hgl",
+      "source_revision": "2738ca7688ec13602a97dd33489f3842ab757618"
+    },
+    {
+      "path": "hgl/hgraph/tests/operators.hgl",
+      "source_project": "hgraph",
+      "source_path": "language/stdlib/hgl/hgraph/operators.hgl",
+      "source_revision": "2738ca7688ec13602a97dd33489f3842ab757618"
+    },
+    {
+      "path": "hgl/hgraph/impl/standard.hgl",
+      "source_project": "hgraph",
+      "source_path": "language/stdlib/hgl/hgraph/standard.hgl",
+      "source_revision": "2738ca7688ec13602a97dd33489f3842ab757618"
+    },
+    {
+      "path": "hgl/hgraph/tests/standard.hgl",
+      "source_project": "hgraph",
+      "source_path": "language/stdlib/hgl/hgraph/standard.hgl",
+      "source_revision": "2738ca7688ec13602a97dd33489f3842ab757618"
+    },
+    {
+      "path": "hgl/hgraph/impl/control.hgl",
+      "source_project": "hgraph",
+      "source_path": "language/stdlib/hgl/hgraph/control.hgl",
+      "source_revision": "2738ca7688ec13602a97dd33489f3842ab757618"
+    },
+    {
+      "path": "hgl/hgraph/tests/control.hgl",
+      "source_project": "hgraph",
+      "source_path": "language/stdlib/hgl/hgraph/control.hgl",
+      "source_revision": "2738ca7688ec13602a97dd33489f3842ab757618"
+    },
+    {
+      "path": "hgl/hgraph/impl/stream.hgl",
+      "source_project": "hgraph",
+      "source_path": "language/stdlib/hgl/hgraph/stream.hgl",
+      "source_revision": "2738ca7688ec13602a97dd33489f3842ab757618"
+    },
+    {
+      "path": "hgl/hgraph/tests/stream.hgl",
+      "source_project": "hgraph",
+      "source_path": "language/stdlib/hgl/hgraph/stream.hgl",
+      "source_revision": "2738ca7688ec13602a97dd33489f3842ab757618"
+    },
+    {
+      "path": "hgl/hgraph/impl/temporal.hgl",
+      "source_project": "hgraph",
+      "source_path": "language/stdlib/hgl/hgraph/temporal.hgl",
+      "source_revision": "2738ca7688ec13602a97dd33489f3842ab757618"
+    },
+    {
+      "path": "hgl/hgraph/tests/temporal.hgl",
+      "source_project": "hgraph",
+      "source_path": "language/stdlib/hgl/hgraph/temporal.hgl",
+      "source_revision": "2738ca7688ec13602a97dd33489f3842ab757618"
     }
   ]
 }

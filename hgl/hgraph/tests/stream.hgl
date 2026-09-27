@@ -1,0 +1,53 @@
+module hgraph.std part stream_tests
+
+test {
+    fn first_two(ts: i64) -> i64 => take(ts, 2)
+    fn frozen(predicate: bool, ts: i64) -> i64 => freeze(predicate, ts)
+    fn latched(ts: bool) -> bool => until_true(ts)
+    test take_passivates_after_count {
+        assert eval(first_two, ts: [1, 2, 3, 4]) == [1, 2, _, _]
+    }
+    test freeze_holds_the_last_value_once_true {
+        assert eval(frozen, predicate: [false, false, true, false], ts: [1, 2, 3, 4]) == [1, 2, 3, _]
+    }
+    test until_true_stops_listening_once_true {
+        assert eval(latched, ts: [false, false, true, false]) == [false, false, true, _]
+    }
+    fn sample_integer(signal: bool, ts: i64) -> i64 => sample(signal, ts)
+    fn drop_integer(ts: i64, const count: i64 = 1) -> i64 => drop(ts, count)
+    fn dedup_integer(ts: i64) -> i64 => dedup(ts)
+    fn filter_integer(condition: bool, ts: i64) -> i64 => filter_(condition, ts)
+
+    test sample_uses_only_trigger_ticks {
+        assert eval(sample_integer, signal: [_, true, _, true, true], ts: [1, 2, 3, 4, _]) == [_, 2, _, 4, 4]
+    }
+
+    test drop_counts_ticks_not_cycles {
+        assert eval(drop_integer, ts: [1, _, 1, 2, 2], count: 2) == [_, _, _, 2, 2]
+        assert eval(drop_integer, ts: [1, _, 2], count: -1) == [1, _, 2]
+    }
+
+    test dedup_remembers_zero_and_empty_cycles {
+        assert eval(dedup_integer, ts: [_, 0, 0, _, 1, 1, 0]) == [_, 0, _, _, 1, _, 0]
+    }
+
+    test filter_resynchronizes_on_reopen {
+        assert eval(filter_integer, condition: [true, false, false, true, true, _], ts: [1, 2, 3, _, _, 4]) == [1, _, _, 3, _, 4]
+        assert eval(filter_integer, condition: [true, false, true], ts: [1, _, _]) == [1, _, _]
+    }
+}
+
+test {
+    fn sum_integer(ts: i64) -> i64 => sum(ts)
+    fn reset_integer(ts: i64, reset: bool) -> i64 => sum_reset(ts, reset)
+    fn mean_integer(ts: i64) -> f64 => mean(ts)
+    fn dedup_tolerance(ts: f64, abs_tol: f64) -> f64 => dedup_float(ts, abs_tol)
+    test folds_and_reset_before_first_value {
+        assert eval(sum_integer, ts: [_, 0, 3, 3, _, -2]) == [_, 0, 3, 6, _, 4]
+        assert eval(reset_integer, ts: [_, 2, 3, _, 1], reset: [true, _, false, false, _]) == [0, 2, 3, 0, 1]
+        assert eval(mean_integer, ts: [_, 2, 4, _, 6]) == [_, 2.0, 3.0, _, 4.0]
+    }
+    test dedup_tracks_last_emitted_value {
+        assert eval(dedup_tolerance, ts: [0.0, 0.5, 1.0, 1.5, 2.0], abs_tol: [1.0, _, _, _, _]) == [0.0, _, 1.0, _, 2.0]
+    }
+}

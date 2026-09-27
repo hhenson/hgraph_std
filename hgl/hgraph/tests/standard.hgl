@@ -1,0 +1,33 @@
+module hgraph.std part standard_tests
+
+test {
+    fn convert_integer(ts: f64) -> i64 => to_int(ts)
+    fn convert_float(ts: i64) -> f64 => to_float(ts)
+    fn member_source(ts: i64) -> set<i64> {
+        inject out
+        when { if ts > 0 { upsert(out, ts) } else { discard(out, -ts) } }
+    }
+    fn membership(ts: i64, item: i64) -> bool => contains_(member_source(ts), item)
+    test numeric_conversions_truncate {
+        assert eval(convert_integer, ts: [_, 1.9, -1.9, 0.0]) == [_, 1, -1, 0]
+        assert eval(convert_float, ts: [_, 0, -7]) == [_, 0.0, -7.0]
+    }
+    test membership_seeds_and_resamples {
+        assert eval(membership, ts: [_, 1, 2, -1], item: [1, _, 1, _]) == [false, true, true, false]
+    }
+}
+
+test {
+    fn boolean_members(ts: bool) -> set<bool> {
+        inject out
+        when { upsert(out, ts) }
+    }
+    fn copy_boolean_additions(ts: set<bool>) -> set<bool> {
+        inject out
+        when { for value in elements(ts, added) { upsert(out, value) } }
+    }
+    fn boolean_copy_size(ts: bool) -> i64 => len_(copy_boolean_additions(boolean_members(ts)))
+    test boolean_set_elements_are_values {
+        assert eval(boolean_copy_size, ts: [true, false, true]) == [1, 2, _]
+    }
+}

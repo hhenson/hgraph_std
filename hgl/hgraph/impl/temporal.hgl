@@ -1,0 +1,203 @@
+module hgraph.std part temporal_impl
+
+# Parallel calendar and endpoint-metadata operators.
+
+impl fn year(ts: date) -> i64 {
+    inject out
+    when {
+        let component = native::year(ts)
+        if !valid(out) || out != component {
+            out = component
+        }
+    }
+}
+
+impl fn month(ts: date) -> i64 {
+    inject out
+    when {
+        let component = native::month(ts)
+        if !valid(out) || out != component {
+            out = component
+        }
+    }
+}
+
+impl fn day(ts: date) -> i64 {
+    inject out
+    when {
+        let component = native::day(ts)
+        if !valid(out) || out != component {
+            out = component
+        }
+    }
+}
+
+impl fn weekday(ts: date) -> i64 {
+    when {
+        return native::weekday(ts)
+    }
+}
+
+impl fn isoweekday(ts: date) -> i64 {
+    when {
+        return native::isoweekday(ts)
+    }
+}
+
+impl fn year(ts: datetime) -> i64 {
+    when {
+        return native::year(ts)
+    }
+}
+
+impl fn month(ts: datetime) -> i64 {
+    when {
+        return native::month(ts)
+    }
+}
+
+impl fn day(ts: datetime) -> i64 {
+    when {
+        return native::day(ts)
+    }
+}
+
+impl fn weekday(ts: datetime) -> i64 {
+    when {
+        return native::weekday(ts)
+    }
+}
+
+impl fn isoweekday(ts: datetime) -> i64 {
+    when {
+        return native::isoweekday(ts)
+    }
+}
+
+impl fn hour(ts: datetime) -> i64 {
+    when {
+        return native::hour(ts)
+    }
+}
+
+impl fn minute(ts: datetime) -> i64 {
+    when {
+        return native::minute(ts)
+    }
+}
+
+impl fn second(ts: datetime) -> i64 {
+    when {
+        return native::second(ts)
+    }
+}
+
+impl fn microsecond(ts: datetime) -> i64 {
+    when {
+        return native::microsecond(ts)
+    }
+}
+
+impl fn hour(ts: time) -> i64 {
+    when {
+        return native::hour(ts)
+    }
+}
+
+impl fn minute(ts: time) -> i64 {
+    when {
+        return native::minute(ts)
+    }
+}
+
+impl fn second(ts: time) -> i64 {
+    when {
+        return native::second(ts)
+    }
+}
+
+impl fn microsecond(ts: time) -> i64 {
+    when {
+        return native::microsecond(ts)
+    }
+}
+
+impl fn days(ts: duration) -> i64 {
+    when {
+        return native::days(ts)
+    }
+}
+
+impl fn seconds(ts: duration) -> i64 {
+    when {
+        return native::seconds(ts)
+    }
+}
+
+impl fn microseconds(ts: duration) -> i64 {
+    when {
+        return native::microseconds(ts)
+    }
+}
+
+impl fn total_seconds(ts: duration) -> f64 {
+    when {
+        return native::total_seconds(ts)
+    }
+}
+
+impl fn timestamp(ts: datetime) -> f64 {
+    when {
+        return native::timestamp(ts)
+    }
+}
+
+impl fn datepart(ts: datetime) -> datetime {
+    when {
+        return native::datepart(ts)
+    }
+}
+
+impl fn month_of_year(ts: date) -> i64 {
+    inject out
+    when {
+        let component = native::month(ts)
+        if !valid(out) || out != component {
+            out = component
+        }
+    }
+}
+
+impl fn month_of_year(ts: datetime) -> i64 {
+    when {
+        return native::month(ts)
+    }
+}
+
+impl fn day_of_month(ts: date) -> i64 {
+    inject out
+    when {
+        let component = native::day(ts)
+        if !valid(out) || out != component {
+            out = component
+        }
+    }
+}
+
+impl fn day_of_month(ts: datetime) -> i64 {
+    when {
+        return native::day(ts)
+    }
+}
+
+impl fn last_modified_time(ts: signal) -> datetime {
+    when modified(ts) {
+        return last_modified(ts)
+    }
+}
+
+impl fn last_modified_date(ts: signal) -> date {
+    when modified(ts) {
+        return native::calendar_date(last_modified(ts))
+    }
+}

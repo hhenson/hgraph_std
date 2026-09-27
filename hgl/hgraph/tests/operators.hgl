@@ -1,0 +1,28 @@
+module hgraph.operators part operators_tests
+
+test {
+    fn equals(lhs: f64, rhs: f64) -> bool => eq_(lhs, rhs)
+    fn positive_sign(ts: i64) -> i64 => sign(ts)
+    fn average(lhs: i64, rhs: i64) -> f64 => mean(lhs, rhs)
+    test equality_uses_native_default_tolerance {
+        assert eval(equals, lhs: [0.0, 1.0, 1.0], rhs: [1e-11, 1.0, 1.000001]) == [true, true, false]
+    }
+    test zero_sign_and_mean {
+        assert eval(positive_sign, ts: [-1, 0, 1]) == [-1, 1, 1]
+        assert eval(average, lhs: [2, 4], rhs: [4, 8]) == [3.0, 6.0]
+    }
+    fn integer_power(lhs: i64, rhs: i64) -> i64 => pow_(lhs, rhs)
+    fn mixed_power(lhs: i64, rhs: f64) -> f64 => pow_(lhs, rhs)
+    fn shifted_left(lhs: i64, rhs: i64) -> i64 => lshift_(lhs, rhs)
+    fn shifted_right(lhs: i64, rhs: i64) -> i64 => rshift_(lhs, rhs)
+    fn sliced(s: str, begin: i64, end: i64) -> str => substr(s, begin, end)
+    test checked_arithmetic_values {
+        assert eval(integer_power, lhs: [2, 3, _], rhs: [10, _, 2]) == [1024, 59049, 9]
+        assert eval(mixed_power, lhs: [4, 2], rhs: [0.5, -1.0]) == [2.0, 0.5]
+        assert eval(shifted_left, lhs: [1, 0], rhs: [4, 70]) == [16, 0]
+        assert eval(shifted_right, lhs: [-16, 1], rhs: [2, 70]) == [-4, 0]
+    }
+    test substring_slices {
+        assert eval(sliced, s: ["hgraph", _, "hgraph"], begin: [1, 2, -2], end: [3, 4, 100]) == ["gr", "ra", "ph"]
+    }
+}
