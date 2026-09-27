@@ -1,0 +1,594 @@
+module hgraph.operators part operators_impl
+
+# Parallel HGL implementations of the scalar operator domains listed below.
+# Runtime bodies use scalar expressions and exposed native value functions.
+# Existing core temporal operators remain installed under their own identities.
+
+use hgraph.native as native
+
+impl fn add_<L, R, O>(lhs: L, rhs: R) -> O
+requires native::add(L, R) -> O {
+    when {
+        return native::add(lhs, rhs)
+    }
+}
+
+impl fn sub_<L, R, O>(lhs: L, rhs: R) -> O
+requires native::sub(L, R) -> O {
+    when {
+        return native::sub(lhs, rhs)
+    }
+}
+
+impl fn mul_<L, R, O>(lhs: L, rhs: R) -> O
+requires native::mul(L, R) -> O {
+    when {
+        return native::mul(lhs, rhs)
+    }
+}
+
+impl fn div_<L, R, O>(lhs: L, rhs: R) -> O
+requires native::div(L, R) -> O {
+    when {
+        return native::div(lhs, rhs)
+    }
+}
+
+impl fn floordiv_<L, R, O>(lhs: L, rhs: R) -> O
+requires native::floordiv(L, R) -> O {
+    when {
+        return native::floordiv(lhs, rhs)
+    }
+}
+
+impl fn mod_<L, R, O>(lhs: L, rhs: R) -> O
+requires native::mod(L, R) -> O {
+    when {
+        return native::mod(lhs, rhs)
+    }
+}
+
+impl fn eq_<L, R>(lhs: L, rhs: R) -> bool
+requires native::eq(L, R) -> bool {
+    when {
+        return native::eq(lhs, rhs)
+    }
+}
+
+impl fn ne_<L, R>(lhs: L, rhs: R) -> bool
+requires native::ne(L, R) -> bool {
+    when {
+        return native::ne(lhs, rhs)
+    }
+}
+
+impl fn lt_<L, R>(lhs: L, rhs: R) -> bool
+requires native::lt(L, R) -> bool {
+    when {
+        return native::lt(lhs, rhs)
+    }
+}
+
+impl fn le_<L, R>(lhs: L, rhs: R) -> bool
+requires native::le(L, R) -> bool {
+    when {
+        return native::le(lhs, rhs)
+    }
+}
+
+impl fn gt_<L, R>(lhs: L, rhs: R) -> bool
+requires native::gt(L, R) -> bool {
+    when {
+        return native::gt(lhs, rhs)
+    }
+}
+
+impl fn ge_<L, R>(lhs: L, rhs: R) -> bool
+requires native::ge(L, R) -> bool {
+    when {
+        return native::ge(lhs, rhs)
+    }
+}
+
+impl fn neg_<T, O>(ts: T) -> O
+requires native::neg(T) -> O {
+    when {
+        return native::neg(ts)
+    }
+}
+
+instantiate add_<i64, i64, i64>,
+    add_<i64, f64, f64>,
+    add_<f64, i64, f64>,
+    add_<f64, f64, f64>,
+    sub_<i64, i64, i64>,
+    sub_<i64, f64, f64>,
+    sub_<f64, i64, f64>,
+    sub_<f64, f64, f64>,
+    mul_<i64, i64, i64>,
+    mul_<i64, f64, f64>,
+    mul_<f64, i64, f64>,
+    mul_<f64, f64, f64>,
+    div_<i64, i64, f64>,
+    div_<i64, f64, f64>,
+    div_<f64, i64, f64>,
+    div_<f64, f64, f64>,
+    floordiv_<i64, i64, i64>,
+    floordiv_<i64, f64, f64>,
+    floordiv_<f64, i64, f64>,
+    floordiv_<f64, f64, f64>,
+    mod_<i64, i64, i64>,
+    mod_<i64, f64, f64>,
+    mod_<f64, i64, f64>,
+    mod_<f64, f64, f64>,
+    eq_<i64, i64>,
+    eq_<str, str>,
+    eq_<bool, bool>,
+    ne_<i64, i64>,
+    ne_<f64, f64>,
+    ne_<i64, f64>,
+    ne_<f64, i64>,
+    ne_<str, str>,
+    ne_<bool, bool>,
+    lt_<i64, i64>,
+    lt_<f64, f64>,
+    lt_<i64, f64>,
+    lt_<f64, i64>,
+    lt_<str, str>,
+    le_<i64, i64>,
+    le_<f64, f64>,
+    le_<i64, f64>,
+    le_<f64, i64>,
+    le_<str, str>,
+    gt_<i64, i64>,
+    gt_<f64, f64>,
+    gt_<i64, f64>,
+    gt_<f64, i64>,
+    gt_<str, str>,
+    ge_<i64, i64>,
+    ge_<f64, f64>,
+    ge_<i64, f64>,
+    ge_<f64, i64>,
+    ge_<str, str>,
+    neg_<i64, i64>,
+    neg_<f64, f64>,
+    add_<str, str, str>
+
+impl fn and_(lhs: bool, rhs: bool) -> bool {
+    when {
+        return native::truthy(lhs) && native::truthy(rhs)
+    }
+}
+
+impl fn and_(lhs: i64, rhs: i64) -> bool {
+    when {
+        return native::truthy(lhs) && native::truthy(rhs)
+    }
+}
+
+impl fn and_(lhs: f64, rhs: f64) -> bool {
+    when {
+        return native::truthy(lhs) && native::truthy(rhs)
+    }
+}
+
+impl fn and_(lhs: str, rhs: str) -> bool {
+    when {
+        return native::truthy(lhs) && native::truthy(rhs)
+    }
+}
+
+impl fn and_(lhs: i64, rhs: f64) -> bool {
+    when {
+        return native::truthy(lhs) && native::truthy(rhs)
+    }
+}
+
+impl fn and_(lhs: f64, rhs: i64) -> bool {
+    when {
+        return native::truthy(lhs) && native::truthy(rhs)
+    }
+}
+
+impl fn or_(lhs: bool, rhs: bool) -> bool {
+    when {
+        return native::truthy(lhs) || native::truthy(rhs)
+    }
+}
+
+impl fn or_(lhs: i64, rhs: i64) -> bool {
+    when {
+        return native::truthy(lhs) || native::truthy(rhs)
+    }
+}
+
+impl fn or_(lhs: f64, rhs: f64) -> bool {
+    when {
+        return native::truthy(lhs) || native::truthy(rhs)
+    }
+}
+
+impl fn or_(lhs: str, rhs: str) -> bool {
+    when {
+        return native::truthy(lhs) || native::truthy(rhs)
+    }
+}
+
+impl fn or_(lhs: i64, rhs: f64) -> bool {
+    when {
+        return native::truthy(lhs) || native::truthy(rhs)
+    }
+}
+
+impl fn or_(lhs: f64, rhs: i64) -> bool {
+    when {
+        return native::truthy(lhs) || native::truthy(rhs)
+    }
+}
+
+impl fn not_(ts: bool) -> bool {
+    when {
+        return !native::truthy(ts)
+    }
+}
+
+impl fn not_(ts: i64) -> bool {
+    when {
+        return !native::truthy(ts)
+    }
+}
+
+impl fn not_(ts: f64) -> bool {
+    when {
+        return !native::truthy(ts)
+    }
+}
+
+impl fn not_(ts: str) -> bool {
+    when {
+        return !native::truthy(ts)
+    }
+}
+
+impl fn eq_(lhs: f64, rhs: f64) -> bool {
+    when {
+        let difference = rhs - lhs
+        return -1e-10 <= difference && difference <= 1e-10
+    }
+}
+
+impl fn eq_(lhs: i64, rhs: f64) -> bool {
+    when {
+        let difference = rhs - (lhs + 0.0)
+        return -1e-10 <= difference && difference <= 1e-10
+    }
+}
+
+impl fn eq_(lhs: f64, rhs: i64) -> bool {
+    when {
+        let difference = (rhs + 0.0) - lhs
+        return -1e-10 <= difference && difference <= 1e-10
+    }
+}
+
+impl fn abs_(ts: i64) -> i64 {
+    when {
+        return native::absolute(ts)
+    }
+}
+
+impl fn pos_(ts: i64) -> i64 {
+    when {
+        return ts
+    }
+}
+
+impl fn sign(ts: i64) -> i64 {
+    when {
+        if ts < 0 {
+            return -1
+        }
+        return 1
+    }
+}
+
+impl fn abs_(ts: f64) -> f64 {
+    when {
+        return native::absolute(ts)
+    }
+}
+
+impl fn pos_(ts: f64) -> f64 {
+    when {
+        return ts
+    }
+}
+
+impl fn sign(ts: f64) -> f64 {
+    when {
+        if ts < 0.0 {
+            return -1.0
+        }
+        return 1.0
+    }
+}
+
+impl fn ln(ts: f64) -> f64 {
+    when {
+        return native::logarithm(ts)
+    }
+}
+
+impl fn round_(ts: f64, n_digits: i64) -> f64 {
+    when {
+        return native::round_decimal(ts, n_digits)
+    }
+}
+
+impl fn invert_(ts: i64) -> i64 {
+    when {
+        return native::invert(ts)
+    }
+}
+
+impl fn bit_and(lhs: i64, rhs: i64) -> i64 {
+    when {
+        return native::bit_and(lhs, rhs)
+    }
+}
+
+impl fn bit_or(lhs: i64, rhs: i64) -> i64 {
+    when {
+        return native::bit_or(lhs, rhs)
+    }
+}
+
+impl fn bit_xor(lhs: i64, rhs: i64) -> i64 {
+    when {
+        return native::bit_xor(lhs, rhs)
+    }
+}
+
+impl fn invert_(ts: bool) -> i64 {
+    when {
+        return native::invert(ts)
+    }
+}
+
+impl fn bit_and(lhs: bool, rhs: bool) -> bool {
+    when {
+        return native::bit_and(lhs, rhs)
+    }
+}
+
+impl fn bit_or(lhs: bool, rhs: bool) -> bool {
+    when {
+        return native::bit_or(lhs, rhs)
+    }
+}
+
+impl fn bit_xor(lhs: bool, rhs: bool) -> bool {
+    when {
+        return native::bit_xor(lhs, rhs)
+    }
+}
+
+impl fn min_(lhs: i64, rhs: i64) -> i64 {
+    when {
+        if rhs < lhs {
+            return rhs
+        }
+        return lhs
+    }
+}
+
+impl fn min_(lhs: f64, rhs: f64) -> f64 {
+    when {
+        if rhs < lhs {
+            return rhs
+        }
+        return lhs
+    }
+}
+
+impl fn min_(lhs: str, rhs: str) -> str {
+    when {
+        if rhs < lhs {
+            return rhs
+        }
+        return lhs
+    }
+}
+
+impl fn min_(lhs: date, rhs: date) -> date {
+    when {
+        if rhs < lhs {
+            return rhs
+        }
+        return lhs
+    }
+}
+
+impl fn min_(lhs: datetime, rhs: datetime) -> datetime {
+    when {
+        if rhs < lhs {
+            return rhs
+        }
+        return lhs
+    }
+}
+
+impl fn min_(lhs: duration, rhs: duration) -> duration {
+    when {
+        if rhs < lhs {
+            return rhs
+        }
+        return lhs
+    }
+}
+
+impl fn min_(lhs: i64, rhs: f64) -> f64 {
+    when {
+        if rhs < lhs {
+            return rhs
+        }
+        return lhs + 0.0
+    }
+}
+
+impl fn min_(lhs: f64, rhs: i64) -> f64 {
+    when {
+        if rhs < lhs {
+            return rhs + 0.0
+        }
+        return lhs
+    }
+}
+
+impl fn max_(lhs: i64, rhs: i64) -> i64 {
+    when {
+        if rhs > lhs {
+            return rhs
+        }
+        return lhs
+    }
+}
+
+impl fn max_(lhs: f64, rhs: f64) -> f64 {
+    when {
+        if rhs > lhs {
+            return rhs
+        }
+        return lhs
+    }
+}
+
+impl fn max_(lhs: str, rhs: str) -> str {
+    when {
+        if rhs > lhs {
+            return rhs
+        }
+        return lhs
+    }
+}
+
+impl fn max_(lhs: date, rhs: date) -> date {
+    when {
+        if rhs > lhs {
+            return rhs
+        }
+        return lhs
+    }
+}
+
+impl fn max_(lhs: datetime, rhs: datetime) -> datetime {
+    when {
+        if rhs > lhs {
+            return rhs
+        }
+        return lhs
+    }
+}
+
+impl fn max_(lhs: duration, rhs: duration) -> duration {
+    when {
+        if rhs > lhs {
+            return rhs
+        }
+        return lhs
+    }
+}
+
+impl fn max_(lhs: i64, rhs: f64) -> f64 {
+    when {
+        if rhs > lhs {
+            return rhs
+        }
+        return lhs + 0.0
+    }
+}
+
+impl fn max_(lhs: f64, rhs: i64) -> f64 {
+    when {
+        if rhs > lhs {
+            return rhs + 0.0
+        }
+        return lhs
+    }
+}
+
+impl fn contains_(ts: str, item: str) -> bool {
+    when { return native::contains(ts, item) }
+}
+
+# Python slice semantics through the exposed native value function; the
+# native operator's live start/end positions are ordinary temporal inputs.
+# `start` is a reserved word in HGL, so the parallel identity names the
+# positions `begin`/`end`; positional calls are unaffected.
+impl fn substr(s: str, begin: i64, end: i64) -> str {
+    when { return native::slice(s, begin, end) }
+}
+
+# Checked arithmetic: the native `throws` bindings raise on a negative
+# integer exponent, an overflowing integer power, zero raised to a negative
+# power, and a negative or too-large shift count. The raise ends the
+# evaluation under hgraph's node error model (ADR 0009); there is no divide-
+# by-zero policy parameter on these parallel identities yet.
+impl fn pow_(lhs: i64, rhs: i64) -> i64 {
+    when { return native::power(lhs, rhs) }
+}
+impl fn pow_(lhs: f64, rhs: f64) -> f64 {
+    when { return native::power(lhs, rhs) }
+}
+impl fn pow_(lhs: i64, rhs: f64) -> f64 {
+    when { return native::power(lhs + 0.0, rhs) }
+}
+impl fn pow_(lhs: f64, rhs: i64) -> f64 {
+    when { return native::power(lhs, rhs + 0.0) }
+}
+
+impl fn lshift_(lhs: i64, rhs: i64) -> i64 {
+    when { return native::shift_left(lhs, rhs) }
+}
+impl fn rshift_(lhs: i64, rhs: i64) -> i64 {
+    when { return native::shift_right(lhs, rhs) }
+}
+impl fn mean(lhs: i64, rhs: i64) -> f64 {
+    when { return ((lhs + 0.0) + (rhs + 0.0)) / 2.0 }
+}
+impl fn mean(lhs: f64, rhs: f64) -> f64 {
+    when { return ((lhs + 0.0) + (rhs + 0.0)) / 2.0 }
+}
+impl fn mean(lhs: i64, rhs: f64) -> f64 {
+    when { return ((lhs + 0.0) + (rhs + 0.0)) / 2.0 }
+}
+impl fn mean(lhs: f64, rhs: i64) -> f64 {
+    when { return ((lhs + 0.0) + (rhs + 0.0)) / 2.0 }
+}
+impl fn pos_(ts: duration) -> duration {
+    when { return ts }
+}
+
+# Ordered legacy temporal scalar domains use HGL comparisons.
+instantiate eq_<date, date>, eq_<datetime, datetime>, eq_<duration, duration>, ne_<date, date>, ne_<datetime, datetime>, ne_<duration, duration>, lt_<date, date>, lt_<datetime, datetime>, lt_<duration, duration>, le_<date, date>, le_<datetime, datetime>, le_<duration, duration>, gt_<date, date>, gt_<datetime, datetime>, gt_<duration, duration>, ge_<date, date>, ge_<datetime, datetime>, ge_<duration, duration>
+
+impl fn eq_epsilon(lhs: f64, rhs: f64, const epsilon: f64 = 1e-10) -> bool {
+    when {
+        let difference = (rhs + 0.0) - (lhs + 0.0)
+        return -epsilon <= difference && difference <= epsilon
+    }
+}
+impl fn eq_epsilon(lhs: i64, rhs: f64, const epsilon: f64 = 1e-10) -> bool {
+    when {
+        let difference = (rhs + 0.0) - (lhs + 0.0)
+        return -epsilon <= difference && difference <= epsilon
+    }
+}
+impl fn eq_epsilon(lhs: f64, rhs: i64, const epsilon: f64 = 1e-10) -> bool {
+    when {
+        let difference = (rhs + 0.0) - (lhs + 0.0)
+        return -epsilon <= difference && difference <= epsilon
+    }
+}
+
+instantiate eq_<time, time>, ne_<time, time>

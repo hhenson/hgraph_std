@@ -1,0 +1,9 @@
+module hgraph.std part control_tests
+
+test {
+    fn true_ticks(condition: bool, const tick_once_only: bool = false) -> bool => if_true(condition, tick_once_only)
+    test repeated_true_and_once {
+        assert eval(true_ticks, condition: [false, true, _, true, false, true]) == [_, true, _, true, _, true]
+        assert eval(true_ticks, condition: [false, true, _, true, false, true], tick_once_only: true) == [_, true, _, _, _, _]
+    }
+}

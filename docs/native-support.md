@@ -4,7 +4,7 @@ HGL owns node guards, scheduling, state, publication and graph composition.
 A native helper supplies the operation named by its HGL contract.
 
 The shared scalar declarations are in `hgl/hgraph/native/scalar_values.hgl`,
-`scalar_values_i64.hgl` and `temporal_values.hgl`. Each selected implementation
+`scalar_values_i64.hgl`, `scalar_operators.hgl` and `temporal_values.hgl`. Each selected implementation
 must match parameter names, types, constness, result and error policy. Runtime
 services are requested by the selected part, not added to the public signature.
 
@@ -20,6 +20,11 @@ implementation parts. hgraph's C++ view adapter modules retain their current
 contracts and tests; no embedded C++ body is part of this package. Shared value
 helpers are ordinary native declarations. See the
 [native contract](https://github.com/hhenson/hgraph_spec/blob/main/language/docs/design/native-implementation-parts.md).
+
+Operator implementations require the scalar helpers they call, for example
+`requires native::add(L, R) -> O`. The native value overload determines the
+supported domain; the temporal `add_` operator is not its own prerequisite.
+Native scalar operator tests live in `tests/native_scalar_operators.hgl`.
 
 The library's HGL tests state observable values, absence of ticks, admission
 and error behaviour. The audit repository records cross-runtime results;
