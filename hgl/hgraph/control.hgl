@@ -14,3 +14,26 @@ operator if_true(condition: bool, const tick_once_only: bool = false) -> bool
 operator null_sink(ts: signal)
 
 operator pass_through<T>(ts: T) -> T
+
+# Graph utility operators (hgraph's _graph_operators / _debug_tools family).
+# `const` is a reserved word, so the source spells the constant source `const_`.
+operator const_<T>(const value: T, const delay: duration = 0s) -> T
+
+operator nothing<T>() -> T
+
+operator default<T>(ts: T, default_value: T) -> T
+
+operator debug_print<T>(const label: str, ts: T, const print_delta: bool = true, const sample: i64 = -1)
+
+# TODO: hgraph's print_(format_str, *args, **kwargs) formats the string from
+# its arguments; the argument forms wait on format_. Only the plain string is
+# offered.
+operator print_(format_str: str)
+
+# TODO: hgraph's log_(format_str, *args, level=INFO, sample_count=1, **kwargs);
+# the argument forms wait on format_, and level on the C++ backend, which
+# emits only logger.info today. The plain string is logged at INFO.
+operator log_(format_str: str, const sample_count: i64 = 1)
+
+# TODO: hgraph's assert_ also formats error_msg from arguments (format_).
+operator assert_(condition: bool, const error_msg: str)

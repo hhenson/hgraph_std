@@ -152,3 +152,55 @@ native const fn as_int(value: f64) -> i64
 native const fn as_float(value: bool) -> f64
 
 native const fn as_float(value: i64) -> f64
+
+# Python's str() of a scalar, as debug_print, str_ and format_ render it: the
+# value's own text (True/False, shortest round-trip floats with a point,
+# ISO dates, "[D day(s), ]H:MM:SS[.ffffff]" durations), except that a
+# top-level string is its characters, not a quoted literal.
+native const fn as_str(value: bool) -> str
+
+native const fn as_str(value: i64) -> str
+
+native const fn as_str(value: f64) -> str
+
+native const fn as_str(value: str) -> str
+
+native const fn as_str(value: date) -> str
+
+native const fn as_str(value: time) -> str
+
+native const fn as_str(value: datetime) -> str
+
+native const fn as_str(value: duration) -> str
+
+# One line of text to the run's standard output (hgraph's io writer, so
+# tests that capture printed lines see it). The line break is added here.
+native const fn print_line(text: str)
+
+# Raise with the message. The raise ends the evaluation under hgraph's node
+# error model (ADR 0009); assert_ uses it for a false condition.
+native const fn raise_error(message: str) throws
+
+test {
+    const fn text_of_bool(value: bool) -> str => as_str(value)
+    const fn text_of_int(value: i64) -> str => as_str(value)
+    const fn text_of_float(value: f64) -> str => as_str(value)
+    const fn text_of_str(value: str) -> str => as_str(value)
+    const fn text_of_date(value: date) -> str => as_str(value)
+    const fn text_of_time(value: time) -> str => as_str(value)
+    const fn text_of_datetime(value: datetime) -> str => as_str(value)
+    const fn text_of_duration(value: duration) -> str => as_str(value)
+
+    test python_str_of_scalars {
+        assert eval(text_of_bool, value: [true, false]) == ["True", "False"]
+        assert eval(text_of_int, value: [42, -7, 0]) == ["42", "-7", "0"]
+        assert eval(text_of_float, value: [1.5, 2.0, 0.1]) == ["1.5", "2.0", "0.1"]
+        assert eval(text_of_str, value: ["hgl", ""]) == ["hgl", ""]
+        assert eval(text_of_date, value: [@2026-09-03]) == ["2026-09-03"]
+        assert eval(text_of_time, value: [@09:30, @09:30:15.250]) == ["09:30:00", "09:30:15.250000"]
+        assert eval(text_of_datetime, value: [@2026-09-03T09:30Z, @2026-09-03T09:30:15.250Z]) ==
+            ["2026-09-03 09:30:00", "2026-09-03 09:30:15.250000"]
+        assert eval(text_of_duration, value: [5m, 1h30m, 1d, 1s500ms]) ==
+            ["0:05:00", "1:30:00", "1 day, 0:00:00", "0:00:01.500000"]
+    }
+}
