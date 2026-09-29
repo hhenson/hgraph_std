@@ -23,22 +23,6 @@ instantiate pass_through<bool>, pass_through<i64>, pass_through<f64>, pass_throu
     pass_through<date>, pass_through<time>, pass_through<datetime>, pass_through<duration>
 
 /**
-Arm the stateless alarm once at start; the handler runs on that wake-up.
-
-Notes:
-    ``alarm`` (ADR 0015) leaves no state slot: nothing is recorded, and a
-    restore reruns ``start``. The delay counts from the start of the run,
-    hgraph's ``yield start_time + delay, value``.
-*/
-impl fn const_<T>(const value: T, const delay: duration = 0s) -> T {
-    inject alarm
-    start { alarm.schedule(delay) }
-    when scheduled() { return value }
-}
-instantiate const_<bool>, const_<i64>, const_<f64>, const_<str>,
-    const_<date>, const_<time>, const_<datetime>, const_<duration>
-
-/**
 Inject the alarm and never arm it, so the handler never runs.
 */
 impl fn nothing<T>() -> T {
