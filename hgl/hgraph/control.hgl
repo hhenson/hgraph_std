@@ -17,8 +17,31 @@ operator pass_through<T>(ts: T) -> T
 
 # Graph utility operators: hgraph's _graph_operators and _debug_tools family.
 
-# hgraph's `const` keeps its native identity behind the `const(...)` form until
-# the compiler admits `const` as an operator name (MIG-009); no `const_` is added.
+# TODO: hgraph's const(value: SCALAR, tp: type[TIME_SERIES_TYPE] = TS[SCALAR],
+# delay: timedelta = timedelta()) selects the output shape S independently of
+# the scalar T (MIG-009). Explicit generic arguments on calls are not in the
+# language yet, so this contract offers the S = TS<T> shape only.
+/**
+Publish ``value`` once, ``delay`` after the run starts.
+
+Args:
+    value: The constant.
+    delay: Offset from the start of the run; ``0s`` publishes in the first cycle.
+
+Type Args:
+    T: The value type; the output is the time series of ``T``.
+
+Returns:
+    ``value``.
+
+Ticks:
+    Once, at the start time plus ``delay``, and never again.
+
+Notes:
+    hgraph's ``const``, by its own name (MIG-009). A call ``const(f)`` whose
+    one argument names a function is the value-role selector instead.
+*/
+operator const<T>(const value: T, const delay: duration = 0s) -> T
 
 /**
 A source that never ticks.

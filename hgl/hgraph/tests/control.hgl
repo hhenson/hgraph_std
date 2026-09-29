@@ -11,9 +11,28 @@ test {
 # eval needs a time-series input to bound the run, so a source is paired with
 # a ticking input that null_sink consumes.
 test {
+    fn forty_two(tick: i64) -> i64 {
+        null_sink(tick)
+        const(42)
+    }
+    fn text(tick: i64) -> str {
+        null_sink(tick)
+        const("hgl")
+    }
+    fn later(tick: i64) -> i64 {
+        null_sink(tick)
+        const(7, delay: 2us)
+    }
     fn never(tick: i64) -> i64 {
         null_sink(tick)
         nothing()
+    }
+    test constant_ticks_once_at_start {
+        assert eval(forty_two, tick: [_, 1, 1]) == [42, _, _]
+        assert eval(text, tick: [1]) == ["hgl"]
+    }
+    test constant_after_a_delay {
+        assert eval(later, tick: [1, 1, 1]) == [_, _, 7]
     }
     test nothing_never_ticks {
         assert eval(never, tick: [1, 1]) == [_, _]
@@ -22,7 +41,7 @@ test {
 
 test {
     fn with_default(ts: i64, default_value: i64) -> i64 => default(ts, default_value)
-    fn with_zero(ts: f64) -> f64 => default(ts, 0.0)
+    fn with_zero(ts: f64) -> f64 => default(ts, const(0.0))
     test default_until_the_primary_is_valid {
         assert eval(with_default, ts: [_, _, 5, _, 7], default_value: [1, 2, _, 3, _]) == [1, 2, 5, _, 7]
     }
