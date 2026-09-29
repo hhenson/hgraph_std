@@ -1,6 +1,6 @@
 module hgraph.std part control_impl
 
-use hgraph.native as native
+# The module's `native` alias is declared in impl/standard.hgl; parts share it.
 
 # Variadic control contracts remain pending: all_/any_ need startup output;
 # merge/race need full reference/reselection and structural parity.
