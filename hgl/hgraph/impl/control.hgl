@@ -1,5 +1,7 @@
 module hgraph.std part control_impl
 
+# The module's `native` alias is declared in impl/standard.hgl; parts share it.
+
 # Variadic control contracts remain pending: all_/any_ need startup output;
 # merge/race need full reference/reselection and structural parity.
 # Implemented scalar control/sink slices appear below.
@@ -19,3 +21,240 @@ impl fn null_sink(ts: signal) { when { } }
 impl fn pass_through<T>(ts: T) -> T { when { return ts } }
 instantiate pass_through<bool>, pass_through<i64>, pass_through<f64>, pass_through<str>,
     pass_through<date>, pass_through<time>, pass_through<datetime>, pass_through<duration>
+
+/**
+Arm the stateless alarm once at start; the plain handler runs on that
+wake-up, the source's only evaluation.
+
+Notes:
+    ``alarm`` (ADR 0015) leaves no state slot: nothing is recorded, and a
+    restore reruns ``start``. The delay counts from the start of the run,
+    hgraph's ``yield start_time + delay, value``.
+*/
+impl fn const<T>(const value: T, const delay: duration = 0s) -> T {
+    inject alarm
+    start { alarm.schedule(delay) }
+    when { return value }
+}
+instantiate const<bool>, const<i64>, const<f64>, const<str>,
+    const<date>, const<time>, const<datetime>, const<duration>
+
+/**
+Inject the alarm and never arm it, so the handler never runs.
+*/
+impl fn nothing<T>() -> T {
+    inject alarm
+    when { }
+}
+instantiate nothing<bool>, nothing<i64>, nothing<f64>, nothing<str>,
+    nothing<date>, nothing<time>, nothing<datetime>, nothing<duration>
+
+/**
+Wire ``default_ref`` with ``ts`` twice: as the reference to forward and as
+the value to watch, exactly as hgraph's ``default`` composes it.
+*/
+impl fn default<T>(ts: T, default_value: T) -> T => default_ref(ts, ts, default_value)
+instantiate default<bool>, default<i64>, default<f64>, default<str>,
+    default<date>, default<time>, default<datetime>, default<duration>
+
+/**
+Two handlers on the validity of ``ts``.
+
+Notes:
+    While ``ts`` is invalid the node stays active on it and forwards
+    ``default_value``; once valid, ``ts`` is made passive and its reference
+    is forwarded, so later ticks of ``ts`` reach consumers without waking
+    this node. A reference input is valid once bound, so both guards hold
+    from the first evaluation.
+*/
+impl fn default_ref<T>(ts_ref: ref<T>, ts: T, default_value: ref<T>) -> ref<T> {
+    when valid(ts) && valid(ts_ref) {
+        passivate(ts)
+        return ts_ref
+    }
+    when !valid(ts) && valid(default_value) {
+        activate(ts)
+        return default_value
+    }
+}
+instantiate default_ref<bool>, default_ref<i64>, default_ref<f64>, default_ref<str>,
+    default_ref<date>, default_ref<time>, default_ref<datetime>, default_ref<duration>
+
+# One body per scalar type: a generic body cannot select among the native
+# as_str overloads for a type parameter. The tick counter is node-local
+# diagnostic data and is not recorded (cache, ADR 0011).
+/**
+Print each tick of a ``bool`` input through the native ``as_str`` projection.
+*/
+impl fn debug_print(const label: str, ts: bool, const print_delta: bool = true, const sample: i64 = -1) {
+    cache ticks: i64 = 0
+    when {
+        ticks += 1
+        if sample > 1 {
+            if ticks % sample == 0 {
+                native::print_line("[" + native::as_str(sample) + "] " + label + ": " + native::as_str(ts))
+            }
+        } else {
+            native::print_line(label + ": " + native::as_str(ts))
+        }
+    }
+}
+
+/**
+Print each tick of a ``i64`` input through the native ``as_str`` projection.
+*/
+impl fn debug_print(const label: str, ts: i64, const print_delta: bool = true, const sample: i64 = -1) {
+    cache ticks: i64 = 0
+    when {
+        ticks += 1
+        if sample > 1 {
+            if ticks % sample == 0 {
+                native::print_line("[" + native::as_str(sample) + "] " + label + ": " + native::as_str(ts))
+            }
+        } else {
+            native::print_line(label + ": " + native::as_str(ts))
+        }
+    }
+}
+
+/**
+Print each tick of a ``f64`` input through the native ``as_str`` projection.
+*/
+impl fn debug_print(const label: str, ts: f64, const print_delta: bool = true, const sample: i64 = -1) {
+    cache ticks: i64 = 0
+    when {
+        ticks += 1
+        if sample > 1 {
+            if ticks % sample == 0 {
+                native::print_line("[" + native::as_str(sample) + "] " + label + ": " + native::as_str(ts))
+            }
+        } else {
+            native::print_line(label + ": " + native::as_str(ts))
+        }
+    }
+}
+
+/**
+Print each tick of a ``str`` input through the native ``as_str`` projection.
+*/
+impl fn debug_print(const label: str, ts: str, const print_delta: bool = true, const sample: i64 = -1) {
+    cache ticks: i64 = 0
+    when {
+        ticks += 1
+        if sample > 1 {
+            if ticks % sample == 0 {
+                native::print_line("[" + native::as_str(sample) + "] " + label + ": " + native::as_str(ts))
+            }
+        } else {
+            native::print_line(label + ": " + native::as_str(ts))
+        }
+    }
+}
+
+/**
+Print each tick of a ``date`` input through the native ``as_str`` projection.
+*/
+impl fn debug_print(const label: str, ts: date, const print_delta: bool = true, const sample: i64 = -1) {
+    cache ticks: i64 = 0
+    when {
+        ticks += 1
+        if sample > 1 {
+            if ticks % sample == 0 {
+                native::print_line("[" + native::as_str(sample) + "] " + label + ": " + native::as_str(ts))
+            }
+        } else {
+            native::print_line(label + ": " + native::as_str(ts))
+        }
+    }
+}
+
+/**
+Print each tick of a ``time`` input through the native ``as_str`` projection.
+*/
+impl fn debug_print(const label: str, ts: time, const print_delta: bool = true, const sample: i64 = -1) {
+    cache ticks: i64 = 0
+    when {
+        ticks += 1
+        if sample > 1 {
+            if ticks % sample == 0 {
+                native::print_line("[" + native::as_str(sample) + "] " + label + ": " + native::as_str(ts))
+            }
+        } else {
+            native::print_line(label + ": " + native::as_str(ts))
+        }
+    }
+}
+
+/**
+Print each tick of a ``datetime`` input through the native ``as_str`` projection.
+*/
+impl fn debug_print(const label: str, ts: datetime, const print_delta: bool = true, const sample: i64 = -1) {
+    cache ticks: i64 = 0
+    when {
+        ticks += 1
+        if sample > 1 {
+            if ticks % sample == 0 {
+                native::print_line("[" + native::as_str(sample) + "] " + label + ": " + native::as_str(ts))
+            }
+        } else {
+            native::print_line(label + ": " + native::as_str(ts))
+        }
+    }
+}
+
+/**
+Print each tick of a ``duration`` input through the native ``as_str`` projection.
+*/
+impl fn debug_print(const label: str, ts: duration, const print_delta: bool = true, const sample: i64 = -1) {
+    cache ticks: i64 = 0
+    when {
+        ticks += 1
+        if sample > 1 {
+            if ticks % sample == 0 {
+                native::print_line("[" + native::as_str(sample) + "] " + label + ": " + native::as_str(ts))
+            }
+        } else {
+            native::print_line(label + ": " + native::as_str(ts))
+        }
+    }
+}
+
+/**
+Write the string as it ticks, through the native ``print_line``.
+*/
+impl fn print_(format_str: str) {
+    when { native::print_line(format_str) }
+}
+
+/**
+Send ``[last modified] text`` to the run's logger at INFO.
+
+Notes:
+    hgraph's ``logger.log(level, "[%s] %s", ts.last_modified_time, ts.value)``.
+    The tick counter is node-local and not recorded (cache), as hgraph's is.
+*/
+impl fn log_(format_str: str, const sample_count: i64 = 1) {
+    inject logger
+    cache ticks: i64 = 0
+    when {
+        ticks += 1
+        if sample_count > 1 {
+            if ticks % sample_count == 0 {
+                logger.info("[" + native::as_str(last_modified(format_str)) + "] " + format_str)
+            }
+        } else {
+            logger.info("[" + native::as_str(last_modified(format_str)) + "] " + format_str)
+        }
+    }
+}
+
+/**
+Raise through the native ``raise_error`` on a false tick.
+*/
+impl fn assert_(condition: bool, const error_msg: str) {
+    when {
+        if !condition {
+            native::raise_error(error_msg)
+        }
+    }
+}

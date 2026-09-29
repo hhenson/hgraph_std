@@ -7,3 +7,71 @@ test {
         assert eval(true_ticks, condition: [false, true, _, true, false, true], tick_once_only: true) == [_, true, _, _, _, _]
     }
 }
+
+# eval needs a time-series input to bound the run, so a source is paired with
+# a ticking input that null_sink consumes.
+test {
+    fn forty_two(tick: i64) -> i64 {
+        null_sink(tick)
+        const(42)
+    }
+    fn text(tick: i64) -> str {
+        null_sink(tick)
+        const("hgl")
+    }
+    fn later(tick: i64) -> i64 {
+        null_sink(tick)
+        const(7, delay: 2us)
+    }
+    fn never(tick: i64) -> i64 {
+        null_sink(tick)
+        nothing()
+    }
+    test constant_ticks_once_at_start {
+        assert eval(forty_two, tick: [_, 1, 1]) == [42, _, _]
+        assert eval(text, tick: [1]) == ["hgl"]
+    }
+    test constant_after_a_delay {
+        assert eval(later, tick: [1, 1, 1]) == [_, _, 7]
+    }
+    test nothing_never_ticks {
+        assert eval(never, tick: [1, 1]) == [_, _]
+    }
+}
+
+test {
+    fn with_default(ts: i64, default_value: i64) -> i64 => default(ts, default_value)
+    fn with_zero(ts: f64) -> f64 => default(ts, const(0.0))
+    test default_until_the_primary_is_valid {
+        assert eval(with_default, ts: [_, _, 5, _, 7], default_value: [1, 2, _, 3, _]) == [1, 2, 5, _, 7]
+    }
+    test primary_wins_when_both_tick {
+        assert eval(with_default, ts: [3, _], default_value: [1, 2]) == [3, _]
+    }
+    test constant_default {
+        assert eval(with_zero, ts: [_, 1.5]) == [0.0, 1.5]
+    }
+}
+
+test {
+    fn watched(ts: i64) -> i64 {
+        debug_print("watched", ts)
+        debug_print("sampled", ts, sample: 2)
+        ts
+    }
+    fn printed(ts: str) -> str {
+        print_(ts)
+        log_(ts)
+        log_(ts, sample_count: 2)
+        ts
+    }
+    fn checked(ts: bool) -> bool {
+        assert_(ts, "ts must be true")
+        ts
+    }
+    test diagnostic_sinks_pass_their_input_through {
+        assert eval(watched, ts: [1, 2, 3]) == [1, 2, 3]
+        assert eval(printed, ts: ["a", _, "b"]) == ["a", _, "b"]
+        assert eval(checked, ts: [true, true]) == [true, true]
+    }
+}
