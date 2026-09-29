@@ -23,7 +23,8 @@ instantiate pass_through<bool>, pass_through<i64>, pass_through<f64>, pass_throu
     pass_through<date>, pass_through<time>, pass_through<datetime>, pass_through<duration>
 
 /**
-Arm the stateless alarm once at start; the handler runs on that wake-up.
+Arm the stateless alarm once at start; the plain handler runs on that
+wake-up, the source's only evaluation.
 
 Notes:
     ``alarm`` (ADR 0015) leaves no state slot: nothing is recorded, and a
@@ -33,7 +34,7 @@ Notes:
 impl fn const<T>(const value: T, const delay: duration = 0s) -> T {
     inject alarm
     start { alarm.schedule(delay) }
-    when scheduled() { return value }
+    when { return value }
 }
 instantiate const<bool>, const<i64>, const<f64>, const<str>,
     const<date>, const<time>, const<datetime>, const<duration>
@@ -43,32 +44,41 @@ Inject the alarm and never arm it, so the handler never runs.
 */
 impl fn nothing<T>() -> T {
     inject alarm
-    when scheduled() { }
+    when { }
 }
 instantiate nothing<bool>, nothing<i64>, nothing<f64>, nothing<str>,
     nothing<date>, nothing<time>, nothing<datetime>, nothing<duration>
 
-# TODO: when ts is invalidated hgraph exposes default_value at once; a
-# runtime function cannot observe an invalidation tick yet, so here the
-# fallback reappears on default_value's next tick.
 /**
-Two handlers, one per input.
+Wire ``default_ref`` with ``ts`` twice: as the reference to forward and as
+the value to watch, exactly as hgraph's ``default`` composes it.
+*/
+impl fn default<T>(ts: T, default_value: T) -> T => default_ref(ts, ts, default_value)
+instantiate default<bool>, default<i64>, default<f64>, default<str>,
+    default<date>, default<time>, default<datetime>, default<duration>
+
+/**
+Two handlers on the validity of ``ts``.
 
 Notes:
-    Each handler names its own validity, so neither waits for the other
-    input to be valid. ``ts`` is checked first: when both tick in one cycle
-    the primary wins.
+    While ``ts`` is invalid the node stays active on it and forwards
+    ``default_value``; once valid, ``ts`` is made passive and its reference
+    is forwarded, so later ticks of ``ts`` reach consumers without waking
+    this node. A reference input is valid once bound, so both guards hold
+    from the first evaluation.
 */
-impl fn default<T>(ts: T, default_value: T) -> T {
-    when modified(ts) && valid(ts) {
-        return ts
+impl fn default_ref<T>(ts_ref: ref<T>, ts: T, default_value: ref<T>) -> ref<T> {
+    when valid(ts) && valid(ts_ref) {
+        passivate(ts)
+        return ts_ref
     }
-    when modified(default_value) && valid(default_value) && !valid(ts) {
+    when !valid(ts) && valid(default_value) {
+        activate(ts)
         return default_value
     }
 }
-instantiate default<bool>, default<i64>, default<f64>, default<str>,
-    default<date>, default<time>, default<datetime>, default<duration>
+instantiate default_ref<bool>, default_ref<i64>, default_ref<f64>, default_ref<str>,
+    default_ref<date>, default_ref<time>, default_ref<datetime>, default_ref<duration>
 
 # One body per scalar type: a generic body cannot select among the native
 # as_str overloads for a type parameter. The tick counter is node-local

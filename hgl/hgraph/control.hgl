@@ -58,27 +58,58 @@ Notes:
 operator nothing<T>() -> T
 
 /**
-Forward ``ts`` while it is valid, otherwise ``default_value``.
+Expose ``ts`` once it is valid, and ``default_value`` until then.
 
 Args:
     ts: The primary input.
     default_value: Exposed until ``ts`` is valid.
 
 Type Args:
-    T: The value type of both inputs.
+    T: The time-series type of both inputs.
 
 Returns:
-    Whichever input is current.
+    A reference to whichever input is current; consumers see that input's
+    ticks directly, and the node never reads the values.
 
 Ticks:
-    With ``ts`` once it is valid, and with ``default_value`` while ``ts`` is
-    not. When both tick in one cycle, ``ts`` wins.
+    When the reference rebinds: to ``default_value`` at start, to ``ts``
+    once it is valid. When both tick in one cycle, ``ts`` wins.
 
 Notes:
-    hgraph binds its output to the current input through a reference; this
-    scalar slice forwards the values, which observes the same ticks.
+    hgraph's ``default``: a composition over ``default_ref``, which sees
+    ``ts`` twice, as a reference to forward and as a value to watch for
+    validity.
 */
 operator default<T>(ts: T, default_value: T) -> T
+
+# TODO: when ts is bound through a reference itself, the upstream reference
+# should be forwarded rather than a reference to this node's input; how that
+# is spelled is open (hgraph_spec type-extensions, "forwarding an existing
+# binding").
+/**
+The node behind ``default``: forward a reference to ``ts`` once ``ts`` is
+valid, and a reference to ``default_value`` until then.
+
+Args:
+    ts_ref: ``ts`` as a reference, forwarded once ``ts`` is valid.
+    ts: ``ts`` as a value, watched for validity and then made passive.
+    default_value: Forwarded as a reference until ``ts`` is valid.
+
+Type Args:
+    T: The time-series type.
+
+Returns:
+    The current reference.
+
+Ticks:
+    On a rebind of either reference and, while ``ts`` is invalid, on its
+    ticks; once ``ts`` is valid it is made passive and the node ticks only on
+    rebinds.
+
+Notes:
+    hgraph's ``default_ref``.
+*/
+operator default_ref<T>(ts_ref: ref<T>, ts: T, default_value: ref<T>) -> ref<T>
 
 /**
 Print each tick of ``ts`` as ``label: value``.
