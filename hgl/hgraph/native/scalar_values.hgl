@@ -153,32 +153,74 @@ native const fn as_float(value: bool) -> f64
 
 native const fn as_float(value: i64) -> f64
 
-# Python's str() of a scalar, as debug_print, str_ and format_ render it: the
-# value's own text (True/False, shortest round-trip floats with a point,
-# ISO dates, "[D day(s), ]H:MM:SS[.ffffff]" durations), except that a
-# top-level string is its characters, not a quoted literal.
+/**
+Python's ``str()`` of a ``bool``: ``True`` or ``False``.
+
+Args:
+    value: The value to render.
+
+Returns:
+    The text hgraph's ``debug_print``, ``str_`` and ``format_`` show.
+*/
 native const fn as_str(value: bool) -> str
 
+/**
+Python's ``str()`` of an ``i64``.
+*/
 native const fn as_str(value: i64) -> str
 
+/**
+Python's ``str()`` of an ``f64``: the shortest round-trip text, with a point.
+*/
 native const fn as_str(value: f64) -> str
 
+/**
+Python's ``str()`` of a ``str``: its characters, not a quoted literal.
+*/
 native const fn as_str(value: str) -> str
 
+/**
+Python's ``str()`` of a ``date``: ISO ``YYYY-MM-DD``.
+*/
 native const fn as_str(value: date) -> str
 
+/**
+Python's ``str()`` of a ``time``: ``HH:MM:SS[.ffffff]``.
+*/
 native const fn as_str(value: time) -> str
 
+/**
+Python's ``str()`` of a ``datetime``: ``YYYY-MM-DD HH:MM:SS[.ffffff]``.
+*/
 native const fn as_str(value: datetime) -> str
 
+/**
+Python's ``str()`` of a ``duration``: ``[D day(s), ]H:MM:SS[.ffffff]``.
+*/
 native const fn as_str(value: duration) -> str
 
-# One line of text to the run's standard output (hgraph's io writer, so
-# tests that capture printed lines see it). The line break is added here.
+/**
+Write one line of text to the run's standard output.
+
+Args:
+    text: The line; the line break is added here.
+
+Notes:
+    Goes through hgraph's io writer, so tests that capture printed lines see
+    it.
+*/
 native const fn print_line(text: str)
 
-# Raise with the message. The raise ends the evaluation under hgraph's node
-# error model (ADR 0009); assert_ uses it for a false condition.
+/**
+Raise an error carrying ``message``.
+
+Args:
+    message: The error's message.
+
+Raises:
+    Always. The raise ends the evaluation under hgraph's node error model
+    (ADR 0009); ``assert_`` uses it for a false condition.
+*/
 native const fn raise_error(message: str) throws
 
 test {

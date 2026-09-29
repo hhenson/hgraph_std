@@ -22,35 +22,43 @@ impl fn pass_through<T>(ts: T) -> T { when { return ts } }
 instantiate pass_through<bool>, pass_through<i64>, pass_through<f64>, pass_through<str>,
     pass_through<date>, pass_through<time>, pass_through<datetime>, pass_through<duration>
 
-# Sources. A runtime function with no temporal parameters injects the
-# scheduler; `start` asks for the first evaluation and `when scheduled()`
-# publishes on that alarm (ADR 0010). const_ ticks once at the run's start
-# plus delay, hgraph's `yield start_time + delay, value`.
+/**
+Arm the stateless alarm once at start; the handler runs on that wake-up.
+
+Notes:
+    ``alarm`` (ADR 0015) leaves no state slot: nothing is recorded, and a
+    restore reruns ``start``. The delay counts from the start of the run,
+    hgraph's ``yield start_time + delay, value``.
+*/
 impl fn const_<T>(const value: T, const delay: duration = 0s) -> T {
-    inject scheduler
-    start { scheduler.schedule(delay) }
+    inject alarm
+    start { alarm.schedule(delay) }
     when scheduled() { return value }
 }
 instantiate const_<bool>, const_<i64>, const_<f64>, const_<str>,
     const_<date>, const_<time>, const_<datetime>, const_<duration>
 
-# Never ticks: nothing is ever scheduled, so the handler never runs. The
-# result type is taken from the call site, as hgraph's nothing[TS[T]]().
+/**
+Inject the alarm and never arm it, so the handler never runs.
+*/
 impl fn nothing<T>() -> T {
-    inject scheduler
+    inject alarm
     when scheduled() { }
 }
 instantiate nothing<bool>, nothing<i64>, nothing<f64>, nothing<str>,
     nothing<date>, nothing<time>, nothing<datetime>, nothing<duration>
 
-# Forward ts while it is valid, otherwise expose default_value. hgraph binds
-# the output to whichever input is current through a reference; this scalar
-# slice forwards the values, which observes the same ticks. Each handler
-# names its own validity, so neither waits for the other input to be valid.
-# ts is checked first: when both tick in one cycle the primary wins.
 # TODO: when ts is invalidated hgraph exposes default_value at once; a
 # runtime function cannot observe an invalidation tick yet, so here the
 # fallback reappears on default_value's next tick.
+/**
+Two handlers, one per input.
+
+Notes:
+    Each handler names its own validity, so neither waits for the other
+    input to be valid. ``ts`` is checked first: when both tick in one cycle
+    the primary wins.
+*/
 impl fn default<T>(ts: T, default_value: T) -> T {
     when modified(ts) && valid(ts) {
         return ts
@@ -62,14 +70,12 @@ impl fn default<T>(ts: T, default_value: T) -> T {
 instantiate default<bool>, default<i64>, default<f64>, default<str>,
     default<date>, default<time>, default<datetime>, default<duration>
 
-# Diagnostic sinks. The text is Python's str() of the value, supplied by the
-# native as_str projection so the rendering matches hgraph's str_/format_.
-# print_delta is accepted for API parity: an atomic value's delta is the
-# value itself, so the scalar slice prints the same text either way.
-# sample > 1 prints every sample-th tick with a `[sample]` prefix; the tick
-# counter is node-local diagnostic data and is not recorded (cache, ADR 0011).
 # One body per scalar type: a generic body cannot select among the native
-# as_str overloads for a type parameter.
+# as_str overloads for a type parameter. The tick counter is node-local
+# diagnostic data and is not recorded (cache, ADR 0011).
+/**
+Print each tick of a ``bool`` input through the native ``as_str`` projection.
+*/
 impl fn debug_print(const label: str, ts: bool, const print_delta: bool = true, const sample: i64 = -1) {
     cache ticks: i64 = 0
     when {
@@ -84,6 +90,9 @@ impl fn debug_print(const label: str, ts: bool, const print_delta: bool = true, 
     }
 }
 
+/**
+Print each tick of a ``i64`` input through the native ``as_str`` projection.
+*/
 impl fn debug_print(const label: str, ts: i64, const print_delta: bool = true, const sample: i64 = -1) {
     cache ticks: i64 = 0
     when {
@@ -98,6 +107,9 @@ impl fn debug_print(const label: str, ts: i64, const print_delta: bool = true, c
     }
 }
 
+/**
+Print each tick of a ``f64`` input through the native ``as_str`` projection.
+*/
 impl fn debug_print(const label: str, ts: f64, const print_delta: bool = true, const sample: i64 = -1) {
     cache ticks: i64 = 0
     when {
@@ -112,6 +124,9 @@ impl fn debug_print(const label: str, ts: f64, const print_delta: bool = true, c
     }
 }
 
+/**
+Print each tick of a ``str`` input through the native ``as_str`` projection.
+*/
 impl fn debug_print(const label: str, ts: str, const print_delta: bool = true, const sample: i64 = -1) {
     cache ticks: i64 = 0
     when {
@@ -126,6 +141,9 @@ impl fn debug_print(const label: str, ts: str, const print_delta: bool = true, c
     }
 }
 
+/**
+Print each tick of a ``date`` input through the native ``as_str`` projection.
+*/
 impl fn debug_print(const label: str, ts: date, const print_delta: bool = true, const sample: i64 = -1) {
     cache ticks: i64 = 0
     when {
@@ -140,6 +158,9 @@ impl fn debug_print(const label: str, ts: date, const print_delta: bool = true, 
     }
 }
 
+/**
+Print each tick of a ``time`` input through the native ``as_str`` projection.
+*/
 impl fn debug_print(const label: str, ts: time, const print_delta: bool = true, const sample: i64 = -1) {
     cache ticks: i64 = 0
     when {
@@ -154,6 +175,9 @@ impl fn debug_print(const label: str, ts: time, const print_delta: bool = true, 
     }
 }
 
+/**
+Print each tick of a ``datetime`` input through the native ``as_str`` projection.
+*/
 impl fn debug_print(const label: str, ts: datetime, const print_delta: bool = true, const sample: i64 = -1) {
     cache ticks: i64 = 0
     when {
@@ -168,6 +192,9 @@ impl fn debug_print(const label: str, ts: datetime, const print_delta: bool = tr
     }
 }
 
+/**
+Print each tick of a ``duration`` input through the native ``as_str`` projection.
+*/
 impl fn debug_print(const label: str, ts: duration, const print_delta: bool = true, const sample: i64 = -1) {
     cache ticks: i64 = 0
     when {
@@ -182,18 +209,20 @@ impl fn debug_print(const label: str, ts: duration, const print_delta: bool = tr
     }
 }
 
-# print_ writes the string as it ticks; hgraph's print_(format_str) without
-# arguments prints the string verbatim. The formatted forms remain pending
-# on format_ (see the contract).
+/**
+Write the string as it ticks, through the native ``print_line``.
+*/
 impl fn print_(format_str: str) {
     when { native::print_line(format_str) }
 }
 
-# log_ sends "[last modified] text" to the run's logger at INFO, hgraph's
-# `logger.log(level, "[%s] %s", ts.last_modified_time, ts.value)`.
-# sample_count > 1 logs every sample_count-th tick; the tick counter is
-# node-local and not recorded (cache), as hgraph's is. The level and the
-# formatted forms remain pending (see the contract).
+/**
+Send ``[last modified] text`` to the run's logger at INFO.
+
+Notes:
+    hgraph's ``logger.log(level, "[%s] %s", ts.last_modified_time, ts.value)``.
+    The tick counter is node-local and not recorded (cache), as hgraph's is.
+*/
 impl fn log_(format_str: str, const sample_count: i64 = 1) {
     inject logger
     cache ticks: i64 = 0
@@ -209,8 +238,9 @@ impl fn log_(format_str: str, const sample_count: i64 = 1) {
     }
 }
 
-# Every tick of a false condition raises with the message; the raise ends the
-# evaluation under hgraph's node error model (ADR 0009).
+/**
+Raise through the native ``raise_error`` on a false tick.
+*/
 impl fn assert_(condition: bool, const error_msg: str) {
     when {
         if !condition {

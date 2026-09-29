@@ -15,25 +15,134 @@ operator null_sink(ts: signal)
 
 operator pass_through<T>(ts: T) -> T
 
-# Graph utility operators (hgraph's _graph_operators / _debug_tools family).
-# `const` is a reserved word, so the source spells the constant source `const_`.
+# Graph utility operators: hgraph's _graph_operators and _debug_tools family.
+
+/**
+Publish ``value`` once, ``delay`` after the run starts.
+
+Args:
+    value: The constant.
+    delay: Offset from the start of the run; ``0s`` publishes in the first cycle.
+
+Type Args:
+    T: The value type.
+
+Returns:
+    ``value``.
+
+Ticks:
+    Once, at the start time plus ``delay``, and never again.
+
+Notes:
+    hgraph's ``const``. ``const`` is a reserved word in HGL, so the source
+    spells the operator ``const_``.
+*/
 operator const_<T>(const value: T, const delay: duration = 0s) -> T
 
+/**
+A source that never ticks.
+
+Type Args:
+    T: The result type, taken from the call site.
+
+Ticks:
+    Never; the output stays invalid for the whole run.
+
+Notes:
+    hgraph's ``nothing[TS[T]]()``.
+*/
 operator nothing<T>() -> T
 
+/**
+Forward ``ts`` while it is valid, otherwise ``default_value``.
+
+Args:
+    ts: The primary input.
+    default_value: Exposed until ``ts`` is valid.
+
+Type Args:
+    T: The value type of both inputs.
+
+Returns:
+    Whichever input is current.
+
+Ticks:
+    With ``ts`` once it is valid, and with ``default_value`` while ``ts`` is
+    not. When both tick in one cycle, ``ts`` wins.
+
+Notes:
+    hgraph binds its output to the current input through a reference; this
+    scalar slice forwards the values, which observes the same ticks.
+*/
 operator default<T>(ts: T, default_value: T) -> T
 
+/**
+Print each tick of ``ts`` as ``label: value``.
+
+Args:
+    label: Prefix of every line.
+    ts: The input to watch.
+    print_delta: Accepted for parity with hgraph. An atomic value's delta is
+        the value itself, so the text is the same either way.
+    sample: Above ``1``, print every ``sample``-th tick with a ``[sample]``
+        prefix.
+
+Type Args:
+    T: The value type of ``ts``.
+
+Ticks:
+    On every tick of ``ts``, or every ``sample``-th one. Nothing is published.
+
+Notes:
+    The value's text is Python's ``str()`` of it, as hgraph's ``str_`` and
+    ``format_`` render it.
+*/
 operator debug_print<T>(const label: str, ts: T, const print_delta: bool = true, const sample: i64 = -1)
 
 # TODO: hgraph's print_(format_str, *args, **kwargs) formats the string from
 # its arguments; the argument forms wait on format_. Only the plain string is
 # offered.
+/**
+Print ``format_str`` on each tick.
+
+Args:
+    format_str: The text, printed verbatim, as hgraph prints a format string
+        that has no arguments.
+
+Ticks:
+    On every tick of ``format_str``. Nothing is published.
+*/
 operator print_(format_str: str)
 
 # TODO: hgraph's log_(format_str, *args, level=INFO, sample_count=1, **kwargs);
 # the argument forms wait on format_, and level on the C++ backend, which
 # emits only logger.info today. The plain string is logged at INFO.
+/**
+Log ``format_str`` on each tick as ``[last modified time] text``, at INFO.
+
+Args:
+    format_str: The text, logged verbatim.
+    sample_count: Above ``1``, log every ``sample_count``-th tick.
+
+Ticks:
+    On every tick of ``format_str``, or every ``sample_count``-th one. Nothing
+    is published.
+*/
 operator log_(format_str: str, const sample_count: i64 = 1)
 
 # TODO: hgraph's assert_ also formats error_msg from arguments (format_).
+/**
+Raise ``error_msg`` on any tick of a false ``condition``.
+
+Args:
+    condition: Checked on each tick.
+    error_msg: The message of the error.
+
+Raises:
+    On a false tick of ``condition``. The raise ends the evaluation under the
+    node error model (ADR 0009).
+
+Ticks:
+    On every tick of ``condition``. Nothing is published.
+*/
 operator assert_(condition: bool, const error_msg: str)
