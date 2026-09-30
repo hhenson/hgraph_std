@@ -30,6 +30,13 @@ The library's HGL tests state observable values, absence of ticks, admission
 and error behaviour. The audit repository records cross-runtime results;
 generated C++ or Rust is compiler validation output, never a library source.
 
+Scalar `replay` and `record` use the typed `replay_input` and `capture`
+capabilities specified by HGL ADR 0016. Eval binds their per-run buffers;
+the HGL bodies own replay scheduling/cursor advancement and recorder startup
+and capture calls. Providers supply storage access only. The generic
+`pass_through` compute and recorder read explicit `delta_value` metadata.
+This profile admits bool, i64, f64, str, date, time, datetime and duration.
+
 Known inherited gap: `filter_` may fail to resynchronize after its condition
 becomes invalid and reopens. The extracted body is unchanged; the
 [follow-up](https://github.com/hhenson/hgraph_std/issues/2) requires a reasoned

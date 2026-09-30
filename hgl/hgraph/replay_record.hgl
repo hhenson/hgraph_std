@@ -1,0 +1,8 @@
+# Eval configures the typed per-run buffers required by these operators.
+module hgraph.std part replay_record
+
+operator replay<T>() -> T
+requires T in {bool, i64, f64, str, date, time, datetime, duration}
+
+operator record<T>(ts: T)
+requires T in {bool, i64, f64, str, date, time, datetime, duration}

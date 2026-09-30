@@ -1,0 +1,42 @@
+module hgraph.std part replay_record_tests
+
+test {
+    fn replay_record_sum(lhs: i64, rhs: i64) -> i64 {
+        when { return lhs + rhs }
+    }
+
+    fn replay_record_sample(value: str, trigger: bool) -> str {
+        when modified(trigger) && valid(trigger, value) { return value }
+    }
+
+    fn replay_record_text(ts: str) -> str => pass_through(ts)
+
+    fn replay_record_sink(ts: i64) { when { } }
+
+    test replay_inputs_keep_separate_values_and_lengths {
+        assert eval(replay_record_sum, lhs: [1, _, 2], rhs: [10, 20, _, 30, _]) == [11, 21, 22, 32, _]
+        assert eval(replay_record_sum, lhs: [1, 2, _, 3, _], rhs: [10, _, 20]) == [11, 12, 22, 23, _]
+    }
+
+    test empty_required_input_preserves_the_longest_horizon {
+        assert eval(replay_record_sum, lhs: [], rhs: [1, _, 2, _]) == [_, _, _, _]
+        assert eval(replay_record_sum, lhs: [1, _, 2, _], rhs: []) == [_, _, _, _]
+        assert eval(replay_record_sum, lhs: [], rhs: []) == []
+    }
+
+    test replay_inputs_keep_distinct_scalar_types_and_false_ticks {
+        assert eval(replay_record_sample, value: ["", _, "delta"], trigger: [false, false, _, false, _, _]) == ["", "", _, "delta", _, _]
+    }
+
+    test eval_recordings_are_fresh_between_runs {
+        assert eval(replay_record_text, ts: ["first"]) == ["first"]
+        assert eval(replay_record_text, ts: []) == []
+        assert eval(replay_record_text, ts: [_, "second", _]) == [_, "second", _]
+    }
+
+    test outputless_eval_runs_without_an_output_recording {
+        eval(replay_record_sink, ts: [1, _, 1, 2, _])
+        eval(replay_record_sink, ts: [_, _])
+        eval(replay_record_sink, ts: [])
+    }
+}

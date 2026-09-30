@@ -6,6 +6,7 @@ no Python, C++ or Rust implementation and selects no target provider.
 
 - [Standard module](hgl/hgraph/standard.hgl), with control, stream and temporal parts
 - [Operator contracts](hgl/hgraph/operators.hgl)
+- [Scalar replay and record](hgl/hgraph/replay_record.hgl), configured by `eval`
 - [HGL implementations](hgl/hgraph/impl)
 - [Behaviour tests](hgl/hgraph/tests)
 - [Native support](docs/native-support.md)
