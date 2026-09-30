@@ -10,8 +10,17 @@ test {
     }
 
     fn replay_record_text(ts: str) -> str => pass_through(ts)
+    fn replay_record_i64(ts: i64) -> i64 => pass_through(ts)
+    fn replay_record_bool(ts: bool) -> bool => pass_through(ts)
 
     fn replay_record_sink(ts: i64) { when { } }
+
+    test indexed_replay_keeps_absent_slots_and_present_zero {
+        assert eval(replay_record_i64, ts: [10, _, 12]) == [10, _, 12]
+        assert eval(replay_record_i64, ts: [0, _, 0]) == [0, _, 0]
+        assert eval(replay_record_bool, ts: [false, _, false]) == [false, _, false]
+        assert eval(replay_record_text, ts: ["", _, ""]) == ["", _, ""]
+    }
 
     test replay_inputs_keep_separate_values_and_lengths {
         assert eval(replay_record_sum, lhs: [1, _, 2], rhs: [10, 20, _, 30, _]) == [11, 21, 22, 32, _]
