@@ -36,8 +36,10 @@ the HGL bodies own replay scheduling/cursor advancement and recorder startup
 and capture calls. `len(replay_input)` counts all configured slots;
 `replay_input[index]` returns an owned delta or `null` for an absent slot.
 Replay tests presence before publishing. Bounds remain errors. Capability
-operations use receiver-first calls such as `begin(capture)` and
-`append(capture, time, delta)`. Providers supply storage access only. The generic
+actions use receiver-first calls such as `begin(capture)` and
+`append(capture, time, delta)`. Clock observations are read-only properties;
+replay schedules its next slot at `clock.next_cycle_evaluation_time`. Providers
+supply storage access only. The generic
 `pass_through` compute and recorder read explicit `delta_value` metadata.
 This profile admits bool, i64, f64, str, date, time, datetime and duration.
 
