@@ -1,0 +1,144 @@
+module hgraph.std part pass_through_scalar_tests
+
+# Scalar forwarding publishes each input delta, including equal values (OP-4).
+# Dense eval preserves silent positions through the final input cycle.
+# eval wires replay and recording internally; helpers select typed overloads.
+# The runtime implementation is the when-body in impl/control.hgl.
+test {
+    fn pass_through_bool_delta(ts: bool) -> bool => pass_through(ts)
+    fn pass_through_i64_delta(ts: i64) -> i64 => pass_through(ts)
+    fn pass_through_f64_delta(ts: f64) -> f64 => pass_through(ts)
+    fn pass_through_str_delta(ts: str) -> str => pass_through(ts)
+    fn pass_through_date_delta(ts: date) -> date => pass_through(ts)
+    fn pass_through_time_delta(ts: time) -> time => pass_through(ts)
+    fn pass_through_datetime_delta(ts: datetime) -> datetime => pass_through(ts)
+    fn pass_through_duration_delta(ts: duration) -> duration => pass_through(ts)
+
+    test pass_through_bool_first_equal_and_distinct_ticks {
+        assert eval(pass_through_bool_delta, ts: [false, false, true, false]) == [false, false, true, false]
+    }
+
+    test pass_through_bool_leading_interior_and_trailing_silence {
+        assert eval(pass_through_bool_delta, ts: [_, _, false, _, false, true, _, _, false, _, _]) == [_, _, false, _, false, true, _, _, false, _, _]
+    }
+
+    test pass_through_bool_all_silent_input {
+        assert eval(pass_through_bool_delta, ts: [_, _, _, _]) == [_, _, _, _]
+    }
+
+    test pass_through_bool_empty_input {
+        assert eval(pass_through_bool_delta, ts: []) == []
+    }
+
+    test pass_through_i64_first_equal_and_distinct_ticks {
+        assert eval(pass_through_i64_delta, ts: [0, 0, -7, 0]) == [0, 0, -7, 0]
+    }
+
+    test pass_through_i64_leading_interior_and_trailing_silence {
+        assert eval(pass_through_i64_delta, ts: [_, _, 0, _, 0, -7, _, _, 0, _, _]) == [_, _, 0, _, 0, -7, _, _, 0, _, _]
+    }
+
+    test pass_through_i64_all_silent_input {
+        assert eval(pass_through_i64_delta, ts: [_, _, _, _]) == [_, _, _, _]
+    }
+
+    test pass_through_i64_empty_input {
+        assert eval(pass_through_i64_delta, ts: []) == []
+    }
+
+    test pass_through_f64_first_equal_and_distinct_ticks {
+        assert eval(pass_through_f64_delta, ts: [0.0, 0.0, 1.5, 0.0]) == [0.0, 0.0, 1.5, 0.0]
+    }
+
+    test pass_through_f64_leading_interior_and_trailing_silence {
+        assert eval(pass_through_f64_delta, ts: [_, _, 0.0, _, 0.0, 1.5, _, _, 0.0, _, _]) == [_, _, 0.0, _, 0.0, 1.5, _, _, 0.0, _, _]
+    }
+
+    test pass_through_f64_all_silent_input {
+        assert eval(pass_through_f64_delta, ts: [_, _, _, _]) == [_, _, _, _]
+    }
+
+    test pass_through_f64_empty_input {
+        assert eval(pass_through_f64_delta, ts: []) == []
+    }
+
+    test pass_through_str_first_equal_and_distinct_ticks {
+        assert eval(pass_through_str_delta, ts: ["", "", "delta", ""]) == ["", "", "delta", ""]
+    }
+
+    test pass_through_str_leading_interior_and_trailing_silence {
+        assert eval(pass_through_str_delta, ts: [_, _, "", _, "", "delta", _, _, "", _, _]) == [_, _, "", _, "", "delta", _, _, "", _, _]
+    }
+
+    test pass_through_str_all_silent_input {
+        assert eval(pass_through_str_delta, ts: [_, _, _, _]) == [_, _, _, _]
+    }
+
+    test pass_through_str_empty_input {
+        assert eval(pass_through_str_delta, ts: []) == []
+    }
+
+    test pass_through_date_first_equal_and_distinct_ticks {
+        assert eval(pass_through_date_delta, ts: [@1970-01-01, @1970-01-01, @2024-02-29, @1970-01-01]) == [@1970-01-01, @1970-01-01, @2024-02-29, @1970-01-01]
+    }
+
+    test pass_through_date_leading_interior_and_trailing_silence {
+        assert eval(pass_through_date_delta, ts: [_, _, @1970-01-01, _, @1970-01-01, @2024-02-29, _, _, @1970-01-01, _, _]) == [_, _, @1970-01-01, _, @1970-01-01, @2024-02-29, _, _, @1970-01-01, _, _]
+    }
+
+    test pass_through_date_all_silent_input {
+        assert eval(pass_through_date_delta, ts: [_, _, _, _]) == [_, _, _, _]
+    }
+
+    test pass_through_date_empty_input {
+        assert eval(pass_through_date_delta, ts: []) == []
+    }
+
+    test pass_through_time_first_equal_and_distinct_ticks {
+        assert eval(pass_through_time_delta, ts: [@00:00, @00:00, @12:34:56, @00:00]) == [@00:00, @00:00, @12:34:56, @00:00]
+    }
+
+    test pass_through_time_leading_interior_and_trailing_silence {
+        assert eval(pass_through_time_delta, ts: [_, _, @00:00, _, @00:00, @12:34:56, _, _, @00:00, _, _]) == [_, _, @00:00, _, @00:00, @12:34:56, _, _, @00:00, _, _]
+    }
+
+    test pass_through_time_all_silent_input {
+        assert eval(pass_through_time_delta, ts: [_, _, _, _]) == [_, _, _, _]
+    }
+
+    test pass_through_time_empty_input {
+        assert eval(pass_through_time_delta, ts: []) == []
+    }
+
+    test pass_through_datetime_first_equal_and_distinct_ticks {
+        assert eval(pass_through_datetime_delta, ts: [@1970-01-01T00:00Z, @1970-01-01T00:00Z, @2024-02-29T12:34:56Z, @1970-01-01T00:00Z]) == [@1970-01-01T00:00Z, @1970-01-01T00:00Z, @2024-02-29T12:34:56Z, @1970-01-01T00:00Z]
+    }
+
+    test pass_through_datetime_leading_interior_and_trailing_silence {
+        assert eval(pass_through_datetime_delta, ts: [_, _, @1970-01-01T00:00Z, _, @1970-01-01T00:00Z, @2024-02-29T12:34:56Z, _, _, @1970-01-01T00:00Z, _, _]) == [_, _, @1970-01-01T00:00Z, _, @1970-01-01T00:00Z, @2024-02-29T12:34:56Z, _, _, @1970-01-01T00:00Z, _, _]
+    }
+
+    test pass_through_datetime_all_silent_input {
+        assert eval(pass_through_datetime_delta, ts: [_, _, _, _]) == [_, _, _, _]
+    }
+
+    test pass_through_datetime_empty_input {
+        assert eval(pass_through_datetime_delta, ts: []) == []
+    }
+
+    test pass_through_duration_first_equal_and_distinct_ticks {
+        assert eval(pass_through_duration_delta, ts: [0us, 0us, 1s, 0us]) == [0us, 0us, 1s, 0us]
+    }
+
+    test pass_through_duration_leading_interior_and_trailing_silence {
+        assert eval(pass_through_duration_delta, ts: [_, _, 0us, _, 0us, 1s, _, _, 0us, _, _]) == [_, _, 0us, _, 0us, 1s, _, _, 0us, _, _]
+    }
+
+    test pass_through_duration_all_silent_input {
+        assert eval(pass_through_duration_delta, ts: [_, _, _, _]) == [_, _, _, _]
+    }
+
+    test pass_through_duration_empty_input {
+        assert eval(pass_through_duration_delta, ts: []) == []
+    }
+}
