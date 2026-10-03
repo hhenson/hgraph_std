@@ -1,0 +1,34 @@
+module hgraph.std part pass_through_defaulted_fields_tests
+
+struct DefaultedDeltaQuote {
+    bid: i64
+    ask: i64 = 99
+    label: str = "default"
+}
+
+struct DefaultedDeltaBook {
+    quote: DefaultedDeltaQuote
+    active: bool = true
+}
+
+test {
+    fn defaulted_quote(value: DefaultedDeltaQuote) -> DefaultedDeltaQuote => pass_through(value)
+    fn defaulted_book(value: DefaultedDeltaBook) -> DefaultedDeltaBook => pass_through(value)
+
+    # Delta construction never fills omitted fields from declaration defaults.
+    test delta_omission_does_not_apply_defaults {
+        assert eval(defaulted_quote, [delta<DefaultedDeltaQuote>(bid: 1), _, delta<DefaultedDeltaQuote>(ask: 0)]) == [delta<DefaultedDeltaQuote>(bid: 1), _, delta<DefaultedDeltaQuote>(ask: 0)]
+    }
+
+    # Once supplied, a sibling stays held; it is absent from subsequent deltas.
+    test defaulted_fields_keep_sparse_publications {
+        assert eval(defaulted_quote, [delta<DefaultedDeltaQuote>(bid: 1, ask: 2, label: ""), delta<DefaultedDeltaQuote>(bid: 3), delta<DefaultedDeltaQuote>(ask: 2), _]) == [delta<DefaultedDeltaQuote>(label: "", ask: 2, bid: 1), delta<DefaultedDeltaQuote>(bid: 3), delta<DefaultedDeltaQuote>(ask: 2), _]
+    }
+
+    # The same omission rule applies at every level of a nested delta.
+    test nested_defaulted_fields_keep_sparse_publications {
+        assert eval(defaulted_book, [delta<DefaultedDeltaBook>(quote: delta<DefaultedDeltaQuote>(bid: 1)), delta<DefaultedDeltaBook>(active: false), delta<DefaultedDeltaBook>(quote: delta<DefaultedDeltaQuote>(label: ""))]) == [delta<DefaultedDeltaBook>(quote: delta<DefaultedDeltaQuote>(bid: 1)), delta<DefaultedDeltaBook>(active: false), delta<DefaultedDeltaBook>(quote: delta<DefaultedDeltaQuote>(label: ""))]
+        assert eval(defaulted_book, [_, _]) == [_, _]
+        assert eval(defaulted_quote, []) == []
+    }
+}
