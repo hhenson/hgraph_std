@@ -30,12 +30,12 @@ The library's HGL tests state observable values, absence of ticks, admission
 and error behaviour. The audit repository records cross-runtime results;
 generated C++ or Rust is compiler validation output, never a library source.
 
-`replay` and `record` use ordinary `list<TimedValue<delta_of(T)>>` storage.
+`replay` and `record` use ordinary `list<TimedValue<T>>` storage.
 `replay` receives a const list and yields each absolute timestamp and delta
 payload from a generator body. It visits entries in supplied order; silence
 is the absence of an entry. `record` receives a temporal input and a const
 key, initializes a typed empty global-state list at start, and pushes an
-independently retained `TimedValue<delta_of(T)>` on each input publication. It uses
+independently retained `TimedValue<T>` on each input publication. It uses
 `clock.evaluation_time` and `delta_value(ts)`; completed pushes need no stop
 flush. Ordinary typed entry preparation and borrowing follow ADR 0016.
 

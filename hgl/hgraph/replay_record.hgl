@@ -3,9 +3,9 @@ module hgraph.std part replay_record
 
 export struct TimedValue<T> {
     time: datetime
-    value: T
+    value: delta<T>
 }
 
-operator replay<T>(const values: list<TimedValue<delta_of(T)>>) -> T
+operator replay<T>(const values: list<TimedValue<T>>) -> T
 
 operator record<T>(ts: T, const key: str)
