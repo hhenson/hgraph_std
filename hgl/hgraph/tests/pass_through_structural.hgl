@@ -6,6 +6,7 @@ struct DeltaPair<T> { left:T
 test {
     fn set_i64(value:set<i64>)->set<i64> => pass_through(value)
     fn set_bool(value:set<bool>)->set<bool> => pass_through(value)
+    fn zero(value:list<i64,0>)->list<i64,0> => pass_through(value)
     fn fixed(value:list<i64,2>)->list<i64,2> => pass_through(value)
     fn pair(value:tuple<bool,f64>)->tuple<bool,f64> => pass_through(value)
     fn named(value:DeltaPair<str>)->DeltaPair<str> => pass_through(value)
@@ -37,6 +38,9 @@ test {
         assert eval(nested, [delta<list<map<i64,set<bool>>,2>>(items:[1:delta<map<i64,set<bool>>>(upsert:[5:delta<set<bool>>(added:[false])])]), delta<list<map<i64,set<bool>>,2>>(items:[1:delta<map<i64,set<bool>>>(remove:[5])]), delta<list<map<i64,set<bool>>,2>>(items:[1:delta<map<i64,set<bool>>>(upsert:[5:delta<set<bool>>(added:[false])])])]) == [delta<list<map<i64,set<bool>>,2>>(items:[1:delta<map<i64,set<bool>>>(upsert:[5:delta<set<bool>>(added:[false])])]), delta<list<map<i64,set<bool>>,2>>(items:[1:delta<map<i64,set<bool>>>(remove:[5])]), delta<list<map<i64,set<bool>>,2>>(items:[1:delta<map<i64,set<bool>>>(upsert:[5:delta<set<bool>>(added:[false])])])]
     }
     test empty_and_silent_structural_inputs {
+        # A zero-size fixed list has no admitted nonempty publication.
+        assert eval(zero, []) == []
+        assert eval(zero, [_,_,_]) == [_,_,_]
         assert eval(set_i64, []) == []
         assert eval(set_bool, [_,_,_]) == [_,_,_]
         assert eval(fixed, [_,_,_]) == [_,_,_]
