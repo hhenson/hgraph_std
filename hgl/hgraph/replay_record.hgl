@@ -1,8 +1,13 @@
-# Eval configures the typed per-run buffers required by these operators.
+# Ordinary scalar publications use absolute timestamps and independently owned values.
 module hgraph.std part replay_record
 
-operator replay<T>() -> T
+export struct TimedValue<T> {
+    time: datetime
+    value: T
+}
+
+operator replay<T>(const values: list<TimedValue<T>>) -> T
 requires T in {bool, i64, f64, str, date, time, datetime, duration}
 
-operator record<T>(ts: T)
+operator record<T>(ts: T, const key: str)
 requires T in {bool, i64, f64, str, date, time, datetime, duration}

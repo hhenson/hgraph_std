@@ -1,41 +1,29 @@
 module hgraph.std part replay_record_impl
 
-impl fn replay<T>() -> T
+impl fn replay<T>(const values: list<TimedValue<T>>) -> T
 requires T in {bool, i64, f64, str, date, time, datetime, duration}
 {
-    inject replay_input, alarm, clock
-    cache index: i64 = 0
-
-    start {
-        if len(replay_input) > 0 {
-            schedule(alarm, 0s)
-        }
-    }
-
-    when {
-        let current = index
+    var index: i64 = 0
+    while index < len(values) {
+        yield values[index].time: values[index].value
         index += 1
-        if index < len(replay_input) {
-            schedule_at(alarm, clock.next_cycle_evaluation_time)
-        }
-        let item = replay_input[current]
-        if item != null {
-            return item
-        }
     }
 }
 
-impl fn record<T>(ts: T)
+impl fn record<T>(ts: T, const key: str)
 requires T in {bool, i64, f64, str, date, time, datetime, duration}
 {
-    inject capture
-
+    inject global_state, clock
     start {
-        begin(capture)
+        let initial: list<TimedValue<T>> = []
+        set(global_state, key, initial)
     }
-
     when {
-        append(capture, last_modified(ts), delta_value(ts))
+        var recording: list<TimedValue<T>> = get(global_state, key)
+        push(recording, TimedValue<T>(
+            time: clock.evaluation_time,
+            value: delta_value(ts)
+        ))
     }
 }
 

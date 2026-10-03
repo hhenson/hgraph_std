@@ -15,7 +15,7 @@ test {
 
     fn replay_record_sink(ts: i64) { when { } }
 
-    test indexed_replay_keeps_absent_slots_and_present_zero {
+    test ordinary_replay_keeps_absent_slots_and_present_zero {
         assert eval(replay_record_i64, ts: [10, _, 12]) == [10, _, 12]
         assert eval(replay_record_i64, ts: [0, _, 0]) == [0, _, 0]
         assert eval(replay_record_bool, ts: [false, _, false]) == [false, _, false]
