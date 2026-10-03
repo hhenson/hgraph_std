@@ -20,12 +20,11 @@ different times publish separately. Empty lists publish nothing, and their
 concrete element type still fixes the result type. A fixed-size list is a
 different type and is not implicitly converted.
 
-The generator visits entries in list order. Past entries are skipped; an
-entry due now publishes immediately; a future entry suspends until its time.
-A second publication at the same time fails. Replay neither sorts nor merges
-entries. Engine start is inclusive and end is exclusive, so entries scheduled
-at or after the run end do not publish. Past pre-epoch timestamps skip before
-any scheduling request.
+Entries must have strictly increasing times, including skipped past entries.
+Replay checks each reached yield; equal or decreasing times raise an error.
+An admitted past entry skips, a due entry publishes, and a future entry
+suspends. Replay neither sorts nor merges. Run start is inclusive and end
+exclusive; entries at or beyond the end do not publish.
 
 ```hgl
 const fn samples() -> list<TimedValue<i64>> {
@@ -63,8 +62,8 @@ empty timed data while retaining different horizons. Callers can also compose
 replay and record directly as in the example above.
 
 The normative contract and cases are in
-[ordinary replay and recording](https://github.com/hhenson/hgraph_spec/blob/82804a5d1a75054ae3ed030433511ecba5a90139/library/ordinary_replay_record.md)
-and [its cases](https://github.com/hhenson/hgraph_spec/blob/82804a5d1a75054ae3ed030433511ecba5a90139/runtime/cases_ordinary_replay_record.md).
+[ordinary replay and recording](https://github.com/hhenson/hgraph_spec/blob/f2435639af2c8a8c4dd1c5b319c30cf6ca3df5ba/library/ordinary_replay_record.md)
+and [its cases](https://github.com/hhenson/hgraph_spec/blob/f2435639af2c8a8c4dd1c5b319c30cf6ca3df5ba/runtime/cases_ordinary_replay_record.md).
 The admitted types are bool, i64, f64, str, date, time, datetime, duration,
 sets of bool or i64, fixed-size lists, positional tuples, required-field
 nominal structs, and maps with i64 keys. Structural children recursively use
@@ -82,7 +81,7 @@ they do not become silent publications. A map removal drops child state, so
 reinsertion starts a fresh child. Fixed list size, tuple positions, and nominal
 struct identity remain part of the exact delta type.
 
-The [ordinary delta contract](https://github.com/hhenson/hgraph_spec/blob/82804a5d1a75054ae3ed030433511ecba5a90139/language/docs/design/ordinary-delta-types.md)
+The [ordinary delta contract](https://github.com/hhenson/hgraph_spec/blob/f2435639af2c8a8c4dd1c5b319c30cf6ca3df5ba/language/docs/design/ordinary-delta-types.md)
 defines storage and publication separately. Growing lists, windows, reference
 designations, and additional scalar/provider types need their own admitted
 contracts and are not implied by the generic declarations above.

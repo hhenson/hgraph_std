@@ -154,10 +154,22 @@ test {
         push(values, TimedValue<i64>(time: @1970-01-01T00:00:00.000004Z, value: 3))
         return values
     }
+    const fn ordinary_increasing_values() -> list<TimedValue<i64>> {
+        var values: list<TimedValue<i64>> = []
+        push(values, TimedValue<i64>(time: @1970-01-01T00:00:00.000003Z, value: 1))
+        push(values, TimedValue<i64>(time: @1970-01-01T00:00:00.000004Z, value: 2))
+        push(values, TimedValue<i64>(time: @1970-01-01T00:00:00.000005Z, value: 3))
+        return values
+    }
+    fn ordinary_replay_increasing(tick: i64) -> i64 {
+        ordinary_replay_context(tick)
+        replay(ordinary_increasing_values())
+    }
     fn ordinary_replay_past(tick: i64) -> i64 {
         ordinary_replay_context(tick)
         replay(ordinary_past_values())
     }
+    # Error fixture: the second entry must raise, even though it is past on resumption.
     fn ordinary_replay_descending(tick: i64) -> i64 {
         ordinary_replay_context(tick)
         replay(ordinary_descending_values())
@@ -166,7 +178,7 @@ test {
 
     test ordinary_replay_preserves_supplied_order {
         assert eval(ordinary_replay_past, tick: [1, 1]) == [0, _]
-        assert eval(ordinary_replay_descending, tick: [1, 1, 1, 1, 1]) == [_, _, 1, 3, _]
+        assert eval(ordinary_replay_increasing, tick: [1, 1, 1, 1, 1]) == [_, _, 1, 2, 3]
     }
     test ordinary_record_is_independently_callable {
         eval(ordinary_explicit_record, ts: [0, _, 0, -7, _])
