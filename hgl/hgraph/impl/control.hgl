@@ -19,8 +19,7 @@ impl fn if_true(condition: bool, const tick_once_only: bool = false) -> bool {
 impl fn null_sink(ts: signal) { when { } }
 
 impl fn pass_through<T>(value: T) -> T { when { return delta_value(value) } }
-instantiate pass_through<bool>, pass_through<i64>, pass_through<f64>, pass_through<str>,
-    pass_through<date>, pass_through<time>, pass_through<datetime>, pass_through<duration>
+instantiate pass_through<_>
 
 /**
 Arm the stateless alarm once at start; the plain handler runs on that

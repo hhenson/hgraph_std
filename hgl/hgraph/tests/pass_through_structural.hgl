@@ -1,0 +1,48 @@
+module hgraph.std part pass_through_structural_tests
+
+struct DeltaPair<T> { left:T
+    right:T }
+
+test {
+    fn set_i64(value:set<i64>)->set<i64> => pass_through(value)
+    fn set_bool(value:set<bool>)->set<bool> => pass_through(value)
+    fn fixed(value:list<i64,2>)->list<i64,2> => pass_through(value)
+    fn pair(value:tuple<bool,f64>)->tuple<bool,f64> => pass_through(value)
+    fn named(value:DeltaPair<str>)->DeltaPair<str> => pass_through(value)
+    fn dictionary(value:map<i64,list<i64,2>>)->map<i64,list<i64,2>> => pass_through(value)
+    fn nested(value:list<map<i64,set<bool>>,2>)->list<map<i64,set<bool>>,2> => pass_through(value)
+
+    # Removing the last member still publishes. Reinsertion starts a new change.
+    test set_membership_and_silence {
+        assert eval(set_i64, [_, delta<set<i64>>(added:[2,1]), _, delta<set<i64>>(removed:[1,2]), delta<set<i64>>(added:[1]), _]) == [_, delta<set<i64>>(added:[1,2]), _, delta<set<i64>>(removed:[2,1]), delta<set<i64>>(added:[1]), _]
+        assert eval(set_bool, [delta<set<bool>>(added:[false]), delta<set<bool>>(added:[true],removed:[false]), delta<set<bool>>(removed:[true])]) == [delta<set<bool>>(added:[false]), delta<set<bool>>(removed:[false],added:[true]), delta<set<bool>>(removed:[true])]
+    }
+    # Equal child publications remain present; held siblings do not enter the delta.
+    test sparse_fixed_updates {
+        assert eval(fixed, [delta<list<i64,2>>(items:[1:0]), _, delta<list<i64,2>>(items:[0:7]), delta<list<i64,2>>(items:[0:7])]) == [delta<list<i64,2>>(items:[1:0]), _, delta<list<i64,2>>(items:[0:7]), delta<list<i64,2>>(items:[0:7])]
+        assert eval(fixed, [delta<list<i64,2>>(items:[1:2,0:1])]) == [delta<list<i64,2>>(items:[0:1,1:2])]
+    }
+    # Tuple shorthand omits underscore children and contextually types literals.
+    test sparse_tuple_updates {
+        assert eval(pair, [(false,_), (_,0), (false,1.5), _]) == [(false,_), (_,0.0), (false,1.5), _]
+    }
+    test nominal_fields_preserve_empty_text {
+        assert eval(named, [delta<DeltaPair<str>>(right:""), _, delta<DeltaPair<str>>(left:"x",right:""), delta<DeltaPair<str>>(right:"")]) == [delta<DeltaPair<str>>(right:""), _, delta<DeltaPair<str>>(right:"",left:"x"), delta<DeltaPair<str>>(right:"")]
+    }
+    # Membership removal discards child history; a new partial child is valid.
+    test map_remove_and_recreate {
+        assert eval(dictionary, [delta<map<i64,list<i64,2>>>(upsert:[4:delta<list<i64,2>>(items:[1:0])]), delta<map<i64,list<i64,2>>>(remove:[4]), delta<map<i64,list<i64,2>>>(upsert:[4:delta<list<i64,2>>(items:[0:9])]), _]) == [delta<map<i64,list<i64,2>>>(upsert:[4:delta<list<i64,2>>(items:[1:0])]), delta<map<i64,list<i64,2>>>(remove:[4]), delta<map<i64,list<i64,2>>>(upsert:[4:delta<list<i64,2>>(items:[0:9])]), _]
+    }
+    test recursively_sparse_membership {
+        assert eval(nested, [delta<list<map<i64,set<bool>>,2>>(items:[1:delta<map<i64,set<bool>>>(upsert:[5:delta<set<bool>>(added:[false])])]), delta<list<map<i64,set<bool>>,2>>(items:[1:delta<map<i64,set<bool>>>(remove:[5])]), delta<list<map<i64,set<bool>>,2>>(items:[1:delta<map<i64,set<bool>>>(upsert:[5:delta<set<bool>>(added:[false])])])]) == [delta<list<map<i64,set<bool>>,2>>(items:[1:delta<map<i64,set<bool>>>(upsert:[5:delta<set<bool>>(added:[false])])]), delta<list<map<i64,set<bool>>,2>>(items:[1:delta<map<i64,set<bool>>>(remove:[5])]), delta<list<map<i64,set<bool>>,2>>(items:[1:delta<map<i64,set<bool>>>(upsert:[5:delta<set<bool>>(added:[false])])])]
+    }
+    test empty_and_silent_structural_inputs {
+        assert eval(set_i64, []) == []
+        assert eval(set_bool, [_,_,_]) == [_,_,_]
+        assert eval(fixed, [_,_,_]) == [_,_,_]
+        assert eval(pair, []) == []
+        assert eval(named, [_,_]) == [_,_]
+        assert eval(dictionary, []) == []
+        assert eval(nested, [_,_,_]) == [_,_,_]
+    }
+}

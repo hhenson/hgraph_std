@@ -1,4 +1,4 @@
-# Ordinary scalar publications use absolute timestamps and independently owned values.
+# Publications use absolute timestamps and independently owned delta values.
 module hgraph.std part replay_record
 
 export struct TimedValue<T> {
@@ -6,8 +6,6 @@ export struct TimedValue<T> {
     value: T
 }
 
-operator replay<T>(const values: list<TimedValue<T>>) -> T
-requires T in {bool, i64, f64, str, date, time, datetime, duration}
+operator replay<T>(const values: list<TimedValue<delta_of(T)>>) -> T
 
 operator record<T>(ts: T, const key: str)
-requires T in {bool, i64, f64, str, date, time, datetime, duration}

@@ -1,8 +1,7 @@
-# Ordinary scalar replay and recording
+# Ordinary replay and recording
 
-`replay` and `record` are ordinary HGL library operators for bool, i64, f64,
-str, date, time, datetime and duration. Their shared data type has two
-required fields:
+`replay` and `record` are ordinary HGL library operators. Their shared data
+type has two required fields:
 
 ```hgl
 export struct TimedValue<T> {
@@ -11,7 +10,7 @@ export struct TimedValue<T> {
 }
 ```
 
-`replay(const values: list<TimedValue<T>>) -> T` consumes a typed unbounded
+`replay(const values: list<TimedValue<delta_of(T)>>) -> T` consumes a typed unbounded
 ordinary list. An entry is one present publication at its absolute timestamp.
 False, zero and empty text are values; silence has no entry. Equal values at
 different times publish separately. Empty lists publish nothing, and their
@@ -39,7 +38,7 @@ fn capture_samples() {
 ```
 
 `record(ts: T, const key: str)` binds that key to the exact ordinary type
-`list<TimedValue<T>>` before hooks run. Binding does not initialize its value.
+`list<TimedValue<delta_of(T)>>` before hooks run. Binding does not initialize its value.
 At start, the recorder installs a new typed empty list. On each admitted
 input publication, it appends an independently retained value paired with
 `clock.evaluation_time`. An unmodified input appends nothing, while repeated
@@ -63,6 +62,24 @@ replay and record directly as in the example above.
 The normative contract and cases are in
 [ordinary replay and recording](https://github.com/hhenson/hgraph_spec/blob/60a2d7e09ac68afc8ab5f7655e2cc6b0ad42ec14/library/ordinary_replay_record.md)
 and [its cases](https://github.com/hhenson/hgraph_spec/blob/60a2d7e09ac68afc8ab5f7655e2cc6b0ad42ec14/runtime/cases_ordinary_replay_record.md).
-This scalar implementation uses `TimedValue<T>`. The specification also defines
-an [ordinary structural delta extension](https://github.com/hhenson/hgraph_spec/blob/60a2d7e09ac68afc8ab5f7655e2cc6b0ad42ec14/language/docs/design/ordinary-delta-types.md),
-including `delta_of(T)`; its standard-library implementation is pending.
+The admitted types are bool, i64, f64, str, date, time, datetime, duration,
+sets of bool or i64, fixed-size lists, positional tuples, required-field
+nominal structs, and maps with i64 keys. Structural children recursively use
+this same profile. Each publication has the exact ordinary type `delta_of(T)`;
+for a scalar this reduces to the scalar itself. A structural delta retains
+only the supplied members or children, including nested sparse changes. It
+never fills absent children from held values. Each retention into a timed
+entry, list, or global entry owns its data independently.
+
+Empty structural deltas are valid ordinary stored values but are outside the
+admitted publication profile. Replay's output checks publication admission;
+eval additionally checks its entire supplied input trace before starting any
+node. Invalid set membership changes and removals of absent map keys fail;
+they do not become silent publications. A map removal drops child state, so
+reinsertion starts a fresh child. Fixed list size, tuple positions, and nominal
+struct identity remain part of the exact delta type.
+
+The [ordinary delta contract](https://github.com/hhenson/hgraph_spec/blob/85096c7c0bf64b6861d2518da9d66312878578c4/language/docs/design/ordinary-delta-types.md)
+defines storage and publication separately. Growing lists, windows, reference
+designations, and additional scalar/provider types need their own admitted
+contracts and are not implied by the generic declarations above.

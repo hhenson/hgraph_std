@@ -1,7 +1,6 @@
 module hgraph.std part replay_record_impl
 
-impl fn replay<T>(const values: list<TimedValue<T>>) -> T
-requires T in {bool, i64, f64, str, date, time, datetime, duration}
+impl fn replay<T>(const values: list<TimedValue<delta_of(T)>>) -> T
 {
     var index: i64 = 0
     while index < len(values) {
@@ -11,23 +10,19 @@ requires T in {bool, i64, f64, str, date, time, datetime, duration}
 }
 
 impl fn record<T>(ts: T, const key: str)
-requires T in {bool, i64, f64, str, date, time, datetime, duration}
 {
     inject global_state, clock
     start {
-        let initial: list<TimedValue<T>> = []
+        let initial: list<TimedValue<delta_of(T)>> = []
         set(global_state, key, initial)
     }
     when {
-        var recording: list<TimedValue<T>> = get(global_state, key)
-        push(recording, TimedValue<T>(
+        var recording: list<TimedValue<delta_of(T)>> = get(global_state, key)
+        push(recording, TimedValue<delta_of(T)>(
             time: clock.evaluation_time,
             value: delta_value(ts)
         ))
     }
 }
 
-instantiate replay<bool>, replay<i64>, replay<f64>, replay<str>,
-    replay<date>, replay<time>, replay<datetime>, replay<duration>,
-    record<bool>, record<i64>, record<f64>, record<str>,
-    record<date>, record<time>, record<datetime>, record<duration>
+instantiate replay<_>, record<_>
