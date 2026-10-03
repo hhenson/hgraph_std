@@ -13,7 +13,7 @@ operator if_true(condition: bool, const tick_once_only: bool = false) -> bool
 
 operator null_sink(ts: signal)
 
-operator pass_through<T>(ts: T) -> T
+operator pass_through<T>(value: T) -> T
 
 # Graph utility operators: hgraph's _graph_operators and _debug_tools family.
 

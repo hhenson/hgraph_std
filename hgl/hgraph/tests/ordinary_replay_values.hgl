@@ -1,0 +1,188 @@
+module hgraph.std part ordinary_replay_values_tests
+
+test {
+    fn ordinary_replay_context(tick: i64) { when { } }
+
+    const fn ordinary_publications<T>(first: delta<T>, second: delta<T>) -> list<TimedValue<T>> {
+        var values: list<TimedValue<T>> = []
+        push(values, TimedValue<T>(time: @1970-01-01T00:00:00.000003Z, value: first))
+        push(values, TimedValue<T>(time: @1970-01-01T00:00:00.000005Z, value: first))
+        push(values, TimedValue<T>(time: @1970-01-01T00:00:00.000006Z, value: second))
+        push(values, TimedValue<T>(time: @1970-01-01T00:00:00.000009Z, value: first))
+        return values
+    }
+
+    # T is the map shape; TimedValue stores sparse delta<T>, not a complete map.
+    fn ordinary_replay_map(tick: i64) -> map<i64,i64> {
+        ordinary_replay_context(tick)
+        replay(ordinary_publications(delta<map<i64,i64>>(upsert:[2:0]), delta<map<i64,i64>>(upsert:[3:7])))
+    }
+    test ordinary_timed_value_uses_the_originating_shape {
+        assert eval(ordinary_replay_map, tick:[1,1,1,1,1,1,1,1,1,1,1]) == [_,_,delta<map<i64,i64>>(upsert:[2:0]),_,delta<map<i64,i64>>(upsert:[2:0]),delta<map<i64,i64>>(upsert:[3:7]),_,_,delta<map<i64,i64>>(upsert:[2:0]),_,_]
+    }
+
+    fn ordinary_replay_bool(tick: i64) -> bool {
+        ordinary_replay_context(tick)
+        replay(ordinary_publications(false, true))
+    }
+    fn ordinary_replay_empty_bool(tick: i64) -> bool {
+        ordinary_replay_context(tick)
+        let values: list<TimedValue<bool>> = []
+        replay(values)
+    }
+
+    test ordinary_replay_bool_preserves_publications_and_silence {
+        assert eval(ordinary_replay_bool, tick: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]) == [_, _, false, _, false, true, _, _, false, _, _]
+        assert eval(ordinary_replay_empty_bool, tick: [1, 1, 1, 1]) == [_, _, _, _]
+    }
+
+    fn ordinary_replay_i64(tick: i64) -> i64 {
+        ordinary_replay_context(tick)
+        replay(ordinary_publications(0, -7))
+    }
+    fn ordinary_replay_empty_i64(tick: i64) -> i64 {
+        ordinary_replay_context(tick)
+        let values: list<TimedValue<i64>> = []
+        replay(values)
+    }
+
+    test ordinary_replay_i64_preserves_publications_and_silence {
+        assert eval(ordinary_replay_i64, tick: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]) == [_, _, 0, _, 0, -7, _, _, 0, _, _]
+        assert eval(ordinary_replay_empty_i64, tick: [1, 1, 1, 1]) == [_, _, _, _]
+    }
+
+    fn ordinary_replay_f64(tick: i64) -> f64 {
+        ordinary_replay_context(tick)
+        replay(ordinary_publications(0.0, 1.5))
+    }
+    fn ordinary_replay_empty_f64(tick: i64) -> f64 {
+        ordinary_replay_context(tick)
+        let values: list<TimedValue<f64>> = []
+        replay(values)
+    }
+
+    test ordinary_replay_f64_preserves_publications_and_silence {
+        assert eval(ordinary_replay_f64, tick: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]) == [_, _, 0.0, _, 0.0, 1.5, _, _, 0.0, _, _]
+        assert eval(ordinary_replay_empty_f64, tick: [1, 1, 1, 1]) == [_, _, _, _]
+    }
+
+    fn ordinary_replay_str(tick: i64) -> str {
+        ordinary_replay_context(tick)
+        replay(ordinary_publications("", "delta"))
+    }
+    fn ordinary_replay_empty_str(tick: i64) -> str {
+        ordinary_replay_context(tick)
+        let values: list<TimedValue<str>> = []
+        replay(values)
+    }
+
+    test ordinary_replay_str_preserves_publications_and_silence {
+        assert eval(ordinary_replay_str, tick: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]) == [_, _, "", _, "", "delta", _, _, "", _, _]
+        assert eval(ordinary_replay_empty_str, tick: [1, 1, 1, 1]) == [_, _, _, _]
+    }
+
+    fn ordinary_replay_date(tick: i64) -> date {
+        ordinary_replay_context(tick)
+        replay(ordinary_publications(@1970-01-01, @2024-02-29))
+    }
+    fn ordinary_replay_empty_date(tick: i64) -> date {
+        ordinary_replay_context(tick)
+        let values: list<TimedValue<date>> = []
+        replay(values)
+    }
+
+    test ordinary_replay_date_preserves_publications_and_silence {
+        assert eval(ordinary_replay_date, tick: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]) == [_, _, @1970-01-01, _, @1970-01-01, @2024-02-29, _, _, @1970-01-01, _, _]
+        assert eval(ordinary_replay_empty_date, tick: [1, 1, 1, 1]) == [_, _, _, _]
+    }
+
+    fn ordinary_replay_time(tick: i64) -> time {
+        ordinary_replay_context(tick)
+        replay(ordinary_publications(@00:00, @12:34:56))
+    }
+    fn ordinary_replay_empty_time(tick: i64) -> time {
+        ordinary_replay_context(tick)
+        let values: list<TimedValue<time>> = []
+        replay(values)
+    }
+
+    test ordinary_replay_time_preserves_publications_and_silence {
+        assert eval(ordinary_replay_time, tick: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]) == [_, _, @00:00, _, @00:00, @12:34:56, _, _, @00:00, _, _]
+        assert eval(ordinary_replay_empty_time, tick: [1, 1, 1, 1]) == [_, _, _, _]
+    }
+
+    fn ordinary_replay_datetime(tick: i64) -> datetime {
+        ordinary_replay_context(tick)
+        replay(ordinary_publications(@1970-01-01T00:00:00Z, @2024-02-29T12:34:56Z))
+    }
+    fn ordinary_replay_empty_datetime(tick: i64) -> datetime {
+        ordinary_replay_context(tick)
+        let values: list<TimedValue<datetime>> = []
+        replay(values)
+    }
+
+    test ordinary_replay_datetime_preserves_publications_and_silence {
+        assert eval(ordinary_replay_datetime, tick: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]) == [_, _, @1970-01-01T00:00:00Z, _, @1970-01-01T00:00:00Z, @2024-02-29T12:34:56Z, _, _, @1970-01-01T00:00:00Z, _, _]
+        assert eval(ordinary_replay_empty_datetime, tick: [1, 1, 1, 1]) == [_, _, _, _]
+    }
+
+    fn ordinary_replay_duration(tick: i64) -> duration {
+        ordinary_replay_context(tick)
+        replay(ordinary_publications(0us, 1s))
+    }
+    fn ordinary_replay_empty_duration(tick: i64) -> duration {
+        ordinary_replay_context(tick)
+        let values: list<TimedValue<duration>> = []
+        replay(values)
+    }
+
+    test ordinary_replay_duration_preserves_publications_and_silence {
+        assert eval(ordinary_replay_duration, tick: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]) == [_, _, 0us, _, 0us, 1s, _, _, 0us, _, _]
+        assert eval(ordinary_replay_empty_duration, tick: [1, 1, 1, 1]) == [_, _, _, _]
+    }
+
+    const fn ordinary_past_values() -> list<TimedValue<i64>> {
+        var values: list<TimedValue<i64>> = []
+        push(values, TimedValue<i64>(time: @1969-01-01T00:00:00Z, value: 9))
+        push(values, TimedValue<i64>(time: @1970-01-01T00:00:00.000001Z, value: 0))
+        return values
+    }
+    const fn ordinary_descending_values() -> list<TimedValue<i64>> {
+        var values: list<TimedValue<i64>> = []
+        push(values, TimedValue<i64>(time: @1970-01-01T00:00:00.000003Z, value: 1))
+        push(values, TimedValue<i64>(time: @1970-01-01T00:00:00.000002Z, value: 2))
+        push(values, TimedValue<i64>(time: @1970-01-01T00:00:00.000004Z, value: 3))
+        return values
+    }
+    const fn ordinary_increasing_values() -> list<TimedValue<i64>> {
+        var values: list<TimedValue<i64>> = []
+        push(values, TimedValue<i64>(time: @1970-01-01T00:00:00.000003Z, value: 1))
+        push(values, TimedValue<i64>(time: @1970-01-01T00:00:00.000004Z, value: 2))
+        push(values, TimedValue<i64>(time: @1970-01-01T00:00:00.000005Z, value: 3))
+        return values
+    }
+    fn ordinary_replay_increasing(tick: i64) -> i64 {
+        ordinary_replay_context(tick)
+        replay(ordinary_increasing_values())
+    }
+    fn ordinary_replay_past(tick: i64) -> i64 {
+        ordinary_replay_context(tick)
+        replay(ordinary_past_values())
+    }
+    # Error fixture: the second entry must raise, even though it is past on resumption.
+    fn ordinary_replay_descending(tick: i64) -> i64 {
+        ordinary_replay_context(tick)
+        replay(ordinary_descending_values())
+    }
+    fn ordinary_explicit_record(ts: i64) { record(ts, "ordinary.samples") }
+
+    test ordinary_replay_preserves_supplied_order {
+        assert eval(ordinary_replay_past, tick: [1, 1]) == [0, _]
+        assert eval(ordinary_replay_increasing, tick: [1, 1, 1, 1, 1]) == [_, _, 1, 2, 3]
+    }
+    test ordinary_record_is_independently_callable {
+        eval(ordinary_explicit_record, ts: [0, _, 0, -7, _])
+        eval(ordinary_explicit_record, ts: [_, _, _])
+        eval(ordinary_explicit_record, ts: [])
+    }
+}
