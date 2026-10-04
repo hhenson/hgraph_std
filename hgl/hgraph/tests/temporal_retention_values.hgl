@@ -2,6 +2,10 @@ module hgraph.std part temporal_retention_values_tests
 
 test {
     fn temporal_replay_context(tick: i64) { when { } }
+    fn temporal_civil_replay(tick: i64, const samples: list<TimedValue<civil_datetime>>) -> civil_datetime {
+        temporal_replay_context(tick)
+        replay(samples)
+    }
     fn temporal_zone_replay(tick: i64, const samples: list<TimedValue<timezone>>) -> timezone {
         temporal_replay_context(tick)
         replay(samples)
@@ -9,6 +13,38 @@ test {
     fn temporal_zoned_replay(tick: i64, const samples: list<TimedValue<zoned_datetime>>) -> zoned_datetime {
         temporal_replay_context(tick)
         replay(samples)
+    }
+
+    # Retained civil payloads keep microseconds after both source and sample change.
+    test timed_civil_values_retain_independent_payloads_before_replay {
+        var source: civil_datetime = @2026-01-15T12:30:00.123456
+        var sample: TimedValue<civil_datetime> = TimedValue<civil_datetime>(time: @1970-01-01T00:00:00.000001Z, value: source)
+        var samples: list<TimedValue<civil_datetime>> = []
+        push(samples, sample)
+        sample.time = @1970-01-01T00:00:00.000003Z
+        push(samples, sample)
+        source = @2026-01-15T12:30:00.123457
+        sample.value = source
+        sample.time = @1970-01-01T00:00:00.000004Z
+        push(samples, sample)
+        sample.value = @2026-01-16T00:00
+        assert eval(temporal_civil_replay, tick: [1, 1, 1, 1, 1], samples: samples) == [
+            @2026-01-15T12:30:00.123456, _, @2026-01-15T12:30:00.123456,
+            @2026-01-15T12:30:00.123457, _
+        ]
+    }
+
+    # Typed empty lists fix replay's leaf type and produce no publications.
+    test empty_timed_temporal_lists_preserve_only_the_input_horizon {
+        let civil: list<TimedValue<civil_datetime>> = []
+        let zone: list<TimedValue<timezone>> = []
+        let zoned: list<TimedValue<zoned_datetime>> = []
+        assert eval(temporal_civil_replay, tick: [1, 1, 1], samples: civil) == [_, _, _]
+        assert eval(temporal_zone_replay, tick: [1, 1, 1], samples: zone) == [_, _, _]
+        assert eval(temporal_zoned_replay, tick: [1, 1, 1], samples: zoned) == [_, _, _]
+        assert eval(temporal_civil_replay, tick: [], samples: civil) == []
+        assert eval(temporal_zone_replay, tick: [], samples: zone) == []
+        assert eval(temporal_zoned_replay, tick: [], samples: zoned) == []
     }
 
     test timed_zone_values_retain_owning_names_before_replay {

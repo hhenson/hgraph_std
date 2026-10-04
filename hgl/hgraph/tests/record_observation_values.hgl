@@ -1,0 +1,114 @@
+module hgraph.std part record_observation_values_tests
+
+struct RecorderSnapshot {
+    amount: i64
+    label: str
+}
+
+test {
+    const fn recorder_expected<T>(first: delta<T>, second: delta<T>) -> list<TimedValue<T>> {
+        var values: list<TimedValue<T>> = []
+        push(values, TimedValue<T>(time: @1970-01-01T00:00:00.000001Z, value: first))
+        push(values, TimedValue<T>(time: @1970-01-01T00:00:00.000003Z, value: first))
+        push(values, TimedValue<T>(time: @1970-01-01T00:00:00.000004Z, value: second))
+        return values
+    }
+
+    # Called only for scalar leaves: structural deltas have no ordinary equality.
+    fn recorder_matches<T>(trigger: i64, const expected: list<TimedValue<T>>) -> bool {
+        inject global_state
+        when {
+            let captured: list<TimedValue<T>> = get(global_state, "observed.recording")
+            if len(captured) != len(expected) { return false }
+            var index: i64 = 0
+            while index < len(expected) {
+                if captured[index].time != expected[index].time { return false }
+                if captured[index].value != expected[index].value { return false }
+                index += 1
+            }
+            return true
+        }
+    }
+
+    fn record_observed_i64(value: i64, trigger: i64, const expected: list<TimedValue<i64>>) -> bool {
+        record(pass_through(value), "observed.recording")
+        recorder_matches(trigger, expected)
+    }
+    fn record_observed_civil(value: civil_datetime, trigger: i64, const expected: list<TimedValue<civil_datetime>>) -> bool {
+        record(pass_through(value), "observed.recording")
+        recorder_matches(trigger, expected)
+    }
+    fn record_observed_zone(value: timezone, trigger: i64, const expected: list<TimedValue<timezone>>) -> bool {
+        record(pass_through(value), "observed.recording")
+        recorder_matches(trigger, expected)
+    }
+    fn record_observed_zoned(value: zoned_datetime, trigger: i64, const expected: list<TimedValue<zoned_datetime>>) -> bool {
+        record(pass_through(value), "observed.recording")
+        recorder_matches(trigger, expected)
+    }
+
+    # The observer ticks strictly after recording, avoiding same-cycle sink ordering.
+    # Equal publications append; silent slots do not; earlier captures keep their values.
+    test ordinary_record_exposes_exact_scalar_captures_before_stop {
+        assert eval(record_observed_i64,
+            value: [0, _, 0, -7, _, _], trigger: [_, _, _, _, _, _, 1],
+            expected: recorder_expected(0, -7)
+        ) == [_, _, _, _, _, _, true]
+        assert eval(record_observed_civil,
+            value: [@2026-01-15T12:30:00.123456, _, @2026-01-15T12:30:00.123456, @2026-01-15T12:30:00.123457, _, _],
+            trigger: [_, _, _, _, _, _, 1],
+            expected: recorder_expected(@2026-01-15T12:30:00.123456, @2026-01-15T12:30:00.123457)
+        ) == [_, _, _, _, _, _, true]
+        assert eval(record_observed_zone,
+            value: [@[US/Eastern], _, @[US/Eastern], @[America/New_York], _, _],
+            trigger: [_, _, _, _, _, _, 1],
+            expected: recorder_expected(@[US/Eastern], @[America/New_York])
+        ) == [_, _, _, _, _, _, true]
+        assert eval(record_observed_zoned,
+            value: [@2026-01-15T12:30+00:00[Etc/UTC], _, @2026-01-15T12:30+00:00[Etc/UTC], @2026-01-15T13:30+01:00[Europe/Paris], _, _],
+            trigger: [_, _, _, _, _, _, 1],
+            expected: recorder_expected(@2026-01-15T12:30+00:00[Etc/UTC], @2026-01-15T13:30+01:00[Europe/Paris])
+        ) == [_, _, _, _, _, _, true]
+    }
+
+    # Start initializes an empty typed recording, including on a fresh run after captures.
+    test ordinary_record_starts_with_an_initialized_fresh_empty_list {
+        let empty_i64: list<TimedValue<i64>> = []
+        let empty_civil: list<TimedValue<civil_datetime>> = []
+        let empty_zone: list<TimedValue<timezone>> = []
+        let empty_zoned: list<TimedValue<zoned_datetime>> = []
+        assert eval(record_observed_i64, value: [0, _, 0, -7], trigger: [_, _, _, _, 1], expected: recorder_expected(0, -7)) == [_, _, _, _, true]
+        assert eval(record_observed_i64, value: [], trigger: [_, 1], expected: empty_i64) == [_, true]
+        assert eval(record_observed_i64, value: [_, _, _], trigger: [_, _, _, 1], expected: empty_i64) == [_, _, _, true]
+        assert eval(record_observed_civil, value: [], trigger: [_, 1], expected: empty_civil) == [_, true]
+        assert eval(record_observed_zone, value: [_, _, _], trigger: [_, _, _, 1], expected: empty_zone) == [_, _, _, true]
+        assert eval(record_observed_zoned, value: [], trigger: [_, 1], expected: empty_zoned) == [_, true]
+    }
+
+    fn recorder_snapshot_matches(trigger: i64) -> bool {
+        inject global_state
+        when {
+            let captured: list<TimedValue<atomic<RecorderSnapshot>>> = get(global_state, "observed.snapshot")
+            if len(captured) != 2 { return false }
+            if captured[0].time != @1970-01-01T00:00:00.000001Z { return false }
+            if captured[1].time != @1970-01-01T00:00:00.000003Z { return false }
+            if captured[0].value.amount != 1 { return false }
+            if captured[0].value.label != "first" { return false }
+            if captured[1].value.amount != 0 { return false }
+            if captured[1].value.label != "" { return false }
+            return true
+        }
+    }
+    fn record_observed_snapshot(value: atomic<RecorderSnapshot>, trigger: i64) -> bool {
+        record(pass_through(value), "observed.snapshot")
+        recorder_snapshot_matches(trigger)
+    }
+
+    # Atomic payloads are complete ordinary structs, so field inspection is admitted.
+    test ordinary_record_retains_atomic_struct_fields_independently {
+        assert eval(record_observed_snapshot,
+            value: [RecorderSnapshot(amount: 1, label: "first"), _, RecorderSnapshot(amount: 0, label: ""), _],
+            trigger: [_, _, _, _, 1]
+        ) == [_, _, _, _, true]
+    }
+}

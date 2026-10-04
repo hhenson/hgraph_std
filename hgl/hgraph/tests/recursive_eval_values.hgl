@@ -1,0 +1,110 @@
+module hgraph.std part recursive_eval_values_tests
+
+struct SparseClockFields {
+    day: date
+    time_of_day: time
+    instant: datetime
+    elapsed: duration
+}
+
+test {
+    fn recursive_map(value: map<i64, map<i64, i64>>) -> map<i64, map<i64, i64>> => pass_through(value)
+    fn recursive_fixed(value: list<list<i64, 2>, 2>) -> list<list<i64, 2>, 2> => pass_through(value)
+    fn sparse_clock_tuple(value: tuple<date, time, datetime, duration>) -> tuple<date, time, datetime, duration> => pass_through(value)
+    fn sparse_clock_fields(value: SparseClockFields) -> SparseClockFields => pass_through(value)
+
+    # Updating one inner key preserves omitted descendants and the other outer key.
+    # Later removals require those omitted memberships to have survived.
+    test nested_map_updates_preserve_siblings_and_recreate_memberships {
+        assert eval(recursive_map, [
+            delta<map<i64, map<i64, i64>>>(upsert: [
+                7: delta<map<i64, i64>>(upsert: [1: 10, 2: 20]),
+                8: delta<map<i64, i64>>(upsert: [3: 30])
+            ]),
+            delta<map<i64, map<i64, i64>>>(upsert: [7: delta<map<i64, i64>>(upsert: [1: 11])]),
+            _,
+            delta<map<i64, map<i64, i64>>>(upsert: [7: delta<map<i64, i64>>(upsert: [1: 11])]),
+            delta<map<i64, map<i64, i64>>>(upsert: [7: delta<map<i64, i64>>(remove: [2])]),
+            delta<map<i64, map<i64, i64>>>(upsert: [7: delta<map<i64, i64>>(upsert: [2: 0])]),
+            delta<map<i64, map<i64, i64>>>(remove: [8, 7]),
+            delta<map<i64, map<i64, i64>>>(upsert: [7: delta<map<i64, i64>>(upsert: [2: 9])]),
+            _
+        ]) == [
+            delta<map<i64, map<i64, i64>>>(upsert: [
+                8: delta<map<i64, i64>>(upsert: [3: 30]),
+                7: delta<map<i64, i64>>(upsert: [2: 20, 1: 10])
+            ]),
+            delta<map<i64, map<i64, i64>>>(upsert: [7: delta<map<i64, i64>>(upsert: [1: 11])]),
+            _,
+            delta<map<i64, map<i64, i64>>>(upsert: [7: delta<map<i64, i64>>(upsert: [1: 11])]),
+            delta<map<i64, map<i64, i64>>>(upsert: [7: delta<map<i64, i64>>(remove: [2])]),
+            delta<map<i64, map<i64, i64>>>(upsert: [7: delta<map<i64, i64>>(upsert: [2: 0])]),
+            delta<map<i64, map<i64, i64>>>(remove: [7, 8]),
+            delta<map<i64, map<i64, i64>>>(upsert: [7: delta<map<i64, i64>>(upsert: [2: 9])]),
+            _
+        ]
+    }
+
+    # Equal leaves publish again; neither level fills omitted children from held values.
+    test nested_fixed_lists_keep_both_levels_sparse {
+        assert eval(recursive_fixed, [
+            delta<list<list<i64, 2>, 2>>(items: [0: delta<list<i64, 2>>(items: [0: 1, 1: 2]), 1: delta<list<i64, 2>>(items: [1: 3])]),
+            delta<list<list<i64, 2>, 2>>(items: [0: delta<list<i64, 2>>(items: [0: 0])]),
+            _,
+            delta<list<list<i64, 2>, 2>>(items: [0: delta<list<i64, 2>>(items: [0: 0])]),
+            delta<list<list<i64, 2>, 2>>(items: [1: delta<list<i64, 2>>(items: [0: 4])]),
+            _
+        ]) == [
+            delta<list<list<i64, 2>, 2>>(items: [1: delta<list<i64, 2>>(items: [1: 3]), 0: delta<list<i64, 2>>(items: [1: 2, 0: 1])]),
+            delta<list<list<i64, 2>, 2>>(items: [0: delta<list<i64, 2>>(items: [0: 0])]),
+            _,
+            delta<list<list<i64, 2>, 2>>(items: [0: delta<list<i64, 2>>(items: [0: 0])]),
+            delta<list<list<i64, 2>, 2>>(items: [1: delta<list<i64, 2>>(items: [0: 4])]),
+            _
+        ]
+    }
+
+    # Midnight and zero duration are present children; omitted fields remain absent.
+    test clock_tuple_children_preserve_types_and_independent_presence {
+        assert eval(sparse_clock_tuple, [
+            (@1970-01-01, _, @1970-01-01T00:00Z, _),
+            (_, @00:00, _, 0us), _,
+            (@2024-02-29, _, _, _),
+            (_, @12:34:56, @2024-02-29T12:34:56Z, 1s),
+            (_, @12:34:56, _, 1s), _
+        ]) == [
+            (@1970-01-01, _, @1970-01-01T00:00Z, _),
+            (_, @00:00, _, 0us), _,
+            (@2024-02-29, _, _, _),
+            (_, @12:34:56, @2024-02-29T12:34:56Z, 1s),
+            (_, @12:34:56, _, 1s), _
+        ]
+    }
+
+    test clock_struct_children_preserve_types_and_independent_presence {
+        assert eval(sparse_clock_fields, [
+            delta<SparseClockFields>(day: @1970-01-01, instant: @1970-01-01T00:00Z),
+            delta<SparseClockFields>(time_of_day: @00:00, elapsed: 0us), _,
+            delta<SparseClockFields>(day: @2024-02-29),
+            delta<SparseClockFields>(time_of_day: @12:34:56, instant: @2024-02-29T12:34:56Z, elapsed: 1s),
+            delta<SparseClockFields>(time_of_day: @12:34:56, elapsed: 1s), _
+        ]) == [
+            delta<SparseClockFields>(instant: @1970-01-01T00:00Z, day: @1970-01-01),
+            delta<SparseClockFields>(elapsed: 0us, time_of_day: @00:00), _,
+            delta<SparseClockFields>(day: @2024-02-29),
+            delta<SparseClockFields>(instant: @2024-02-29T12:34:56Z, elapsed: 1s, time_of_day: @12:34:56),
+            delta<SparseClockFields>(elapsed: 1s, time_of_day: @12:34:56), _
+        ]
+    }
+
+    test recursive_shapes_keep_empty_and_silent_horizons {
+        assert eval(recursive_map, []) == []
+        assert eval(recursive_map, [_, _, _]) == [_, _, _]
+        assert eval(recursive_fixed, []) == []
+        assert eval(recursive_fixed, [_, _, _]) == [_, _, _]
+        assert eval(sparse_clock_tuple, []) == []
+        assert eval(sparse_clock_tuple, [_, _, _]) == [_, _, _]
+        assert eval(sparse_clock_fields, []) == []
+        assert eval(sparse_clock_fields, [_, _, _]) == [_, _, _]
+    }
+}
