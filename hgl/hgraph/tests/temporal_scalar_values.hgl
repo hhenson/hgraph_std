@@ -1,0 +1,71 @@
+module hgraph.std part temporal_scalar_values_tests
+
+test {
+    fn temporal_civil(value: civil_datetime) -> civil_datetime => pass_through(value)
+    fn temporal_zone(value: timezone) -> timezone => pass_through(value)
+    fn temporal_zoned(value: zoned_datetime) -> zoned_datetime => pass_through(value)
+    fn temporal_atomic_civil(value: atomic<civil_datetime>) -> civil_datetime => pass_through(value)
+    fn temporal_atomic_zone(value: timezone) -> atomic<timezone> => pass_through(value)
+    fn temporal_atomic_zoned(value: atomic<zoned_datetime>) -> atomic<zoned_datetime> => pass_through(value)
+
+    test civil_publications_preserve_local_fields_and_equal_ticks {
+        let first: civil_datetime = @2024-02-29T12:30:00.123456
+        let second: civil_datetime = @2024-02-29T12:30:00.123457
+        assert first < second
+        assert eval(temporal_civil, [_, first, first, _, second, _]) == [_, first, first, _, second, _]
+        assert eval(temporal_civil, [_, _, _]) == [_, _, _]
+        assert eval(temporal_civil, []) == []
+    }
+
+    test timezone_publications_preserve_exact_alias_names {
+        let alias: timezone = @[US/Eastern]
+        let named: timezone = @[America/New_York]
+        assert alias != named
+        assert eval(temporal_zone, [_, alias, alias, _, named, _]) == [_, alias, alias, _, named, _]
+        assert eval(temporal_zone, [_, _, _]) == [_, _, _]
+        assert eval(temporal_zone, []) == []
+        assert eval(temporal_zone, [@[UTC], @[Etc/UTC]]) == [@[UTC], @[Etc/UTC]]
+        assert @[UTC] != @[Etc/UTC]
+    }
+
+    test zoned_publications_keep_same_instant_values_structurally_distinct {
+        # Equal instants in different zones retain distinct zone/offset fields.
+        let utc: zoned_datetime = @2026-01-15T12:30+00:00[Etc/UTC]
+        let paris: zoned_datetime = @2026-01-15T13:30+01:00[Europe/Paris]
+        assert utc != paris
+        assert eval(temporal_zoned, [_, utc, utc, _, paris, _]) == [_, utc, utc, _, paris, _]
+        assert eval(temporal_zoned, [_, _, _]) == [_, _, _]
+        assert eval(temporal_zoned, []) == []
+    }
+
+    test temporal_scalars_share_atomic_and_delta_identity {
+        let civil: delta<atomic<civil_datetime>> = @2026-01-15T12:30:00.123456
+        let zone: delta<atomic<timezone>> = @[Europe/Paris]
+        let zoned: delta<atomic<zoned_datetime>> = @2026-01-15T13:30+01:00[Europe/Paris]
+        assert eval(temporal_atomic_civil, [civil, _, civil]) == [civil, _, civil]
+        assert eval(temporal_atomic_zone, [zone, _, zone]) == [zone, _, zone]
+        assert eval(temporal_atomic_zoned, [zoned, _, zoned]) == [zoned, _, zoned]
+    }
+
+    test civil_publications_retain_calendar_boundaries {
+        assert eval(temporal_civil, [@0001-01-01T00:00, @9999-12-31T23:59:59.999999]) == [
+            @0001-01-01T00:00, @9999-12-31T23:59:59.999999
+        ]
+    }
+
+    test explicit_offsets_distinguish_the_two_occurrences_of_a_repeated_hour {
+        let first: zoned_datetime = @2024-10-27T01:30+01:00[Europe/London]
+        let second: zoned_datetime = @2024-10-27T01:30+00:00[Europe/London]
+        assert first != second
+        assert eval(temporal_zoned, [first, _, second, second]) == [first, _, second, second]
+    }
+
+    test temporal_test_setup_mutation_is_observed_by_each_fresh_eval {
+        var value: timezone = @[US/Eastern]
+        let retained: timezone = value
+        assert eval(temporal_zone, [value]) == [@[US/Eastern]]
+        value = @[America/New_York]
+        assert eval(temporal_zone, [value, _, retained]) == [@[America/New_York], _, @[US/Eastern]]
+        assert retained == @[US/Eastern]
+    }
+}

@@ -1,0 +1,79 @@
+module hgraph.std part temporal_structural_values_tests
+
+struct TemporalSnapshot {
+    civil: civil_datetime
+    zone: timezone
+    zoned: zoned_datetime
+}
+
+test {
+    fn temporal_civil_list(value: list<civil_datetime, 2>) -> list<civil_datetime, 2> => pass_through(value)
+    fn temporal_zone_map(value: map<i64, timezone>) -> map<i64, timezone> => pass_through(value)
+    fn temporal_mixed_tuple(value: tuple<civil_datetime, timezone, zoned_datetime>) -> tuple<civil_datetime, timezone, zoned_datetime> => pass_through(value)
+    fn temporal_bundle(value: TemporalSnapshot) -> TemporalSnapshot => pass_through(value)
+    fn temporal_snapshot(value: atomic<TemporalSnapshot>) -> atomic<TemporalSnapshot> => pass_through(value)
+    fn temporal_zone_snapshot(value: atomic<list<timezone>>) -> atomic<list<timezone>> => pass_through(value)
+
+    test civil_children_preserve_sparse_fixed_list_patches {
+        let first: civil_datetime = @2026-01-15T12:30
+        let second: civil_datetime = @2026-01-15T12:31
+        assert eval(temporal_civil_list, [
+            delta<list<civil_datetime, 2>>(items: [1: first]), _,
+            delta<list<civil_datetime, 2>>(items: [0: second, 1: first])
+        ]) == [
+            delta<list<civil_datetime, 2>>(items: [1: first]), _,
+            delta<list<civil_datetime, 2>>(items: [1: first, 0: second])
+        ]
+    }
+
+    test timezone_map_children_preserve_updates_removals_and_reinsertions {
+        assert eval(temporal_zone_map, [
+            delta<map<i64, timezone>>(upsert: [7: @[US/Eastern]]),
+            delta<map<i64, timezone>>(upsert: [7: @[America/New_York]]), _,
+            delta<map<i64, timezone>>(remove: [7]),
+            delta<map<i64, timezone>>(upsert: [7: @[US/Eastern]])
+        ]) == [
+            delta<map<i64, timezone>>(upsert: [7: @[US/Eastern]]),
+            delta<map<i64, timezone>>(upsert: [7: @[America/New_York]]), _,
+            delta<map<i64, timezone>>(remove: [7]),
+            delta<map<i64, timezone>>(upsert: [7: @[US/Eastern]])
+        ]
+    }
+
+    test temporal_tuple_and_struct_children_keep_independent_presence {
+        let civil: civil_datetime = @2026-01-15T12:30
+        let zone: timezone = @[Europe/Paris]
+        let zoned: zoned_datetime = @2026-01-15T13:30+01:00[Europe/Paris]
+        assert eval(temporal_mixed_tuple, [(civil, _, zoned), (_, zone, _), _]) == [
+            (civil, _, zoned), (_, zone, _), _
+        ]
+        assert eval(temporal_bundle, [delta<TemporalSnapshot>(civil: civil, zoned: zoned), delta<TemporalSnapshot>(zone: zone), _]) == [
+            delta<TemporalSnapshot>(civil: civil, zoned: zoned), delta<TemporalSnapshot>(zone: zone), _
+        ]
+    }
+
+    test atomic_temporal_snapshots_retain_complete_independent_values {
+        var source: TemporalSnapshot = TemporalSnapshot(
+            civil: @2026-01-15T12:30, zone: @[US/Eastern],
+            zoned: @2026-01-15T12:30+00:00[Etc/UTC]
+        )
+        let retained: TemporalSnapshot = source
+        source.zone = @[America/New_York]
+        source.zoned = @2026-01-15T13:30+01:00[Europe/Paris]
+        assert retained.zone == @[US/Eastern]
+        assert retained.zoned != source.zoned
+        assert eval(temporal_snapshot, [retained, retained, _, source]) == [retained, retained, _, source]
+        assert eval(temporal_snapshot, [_, _]) == [_, _]
+        assert eval(temporal_snapshot, []) == []
+    }
+
+    test atomic_zone_lists_publish_present_empty_snapshots {
+        var source: list<timezone> = []
+        push(source, @[US/Eastern])
+        let retained: list<timezone> = source
+        push(source, @[America/New_York])
+        let empty: list<timezone> = []
+        assert len(retained) == 1
+        assert eval(temporal_zone_snapshot, [source, retained, empty, _, empty]) == [source, retained, empty, _, empty]
+    }
+}
