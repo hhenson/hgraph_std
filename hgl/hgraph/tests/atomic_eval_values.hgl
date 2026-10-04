@@ -22,6 +22,8 @@ struct AtomicChildBook {
     sequence: i64
 }
 
+struct AtomicProjectionBox<T> { value: T }
+
 test {
     const fn atomic_full_list() -> list<i64> { return [1, 2] }
     const fn atomic_other_list() -> list<i64> { return [7] }
@@ -65,9 +67,16 @@ test {
         return value
     }
 
+    const fn atomic_inferred_child_book() -> AtomicChildBook {
+        let inferred = AtomicProjectionBox(value: atomic_ordinary_child_book())
+        let exact: AtomicProjectionBox<AtomicChildBook> = inferred
+        return exact.value
+    }
+
     # The ordinary payload erases field atomic markers; its temporal schema keeps them.
     test atomic_snapshot_projects_nested_atomic_fields_to_ordinary_values {
         assert eval(atomic_child_book_value, [atomic_ordinary_child_book(), _, AtomicChildBook(snapshot: AtomicDefaultQuote(bid: 0), sequence: 0)]) == [AtomicChildBook(snapshot: AtomicDefaultQuote(bid: 3), sequence: 2), _, AtomicChildBook(snapshot: AtomicDefaultQuote(bid: 0), sequence: 0)]
+        assert eval(atomic_child_book_value, [atomic_inferred_child_book()]) == [atomic_ordinary_child_book()]
     }
 
     test atomic_lists_publish_complete_empty_and_equal_snapshots {
