@@ -6,6 +6,16 @@ struct TemporalSnapshot {
     zoned: zoned_datetime
 }
 
+struct TemporalDefaultSnapshot {
+    civil: civil_datetime = @2026-01-15T12:30
+    zone: timezone = @[US/Eastern]
+    zoned: zoned_datetime = @2026-01-15T12:30+00:00[Etc/UTC]
+}
+
+struct TemporalOverriddenDefault {
+    zone: timezone = @[Missing/UnusedDefault]
+}
+
 test {
     fn temporal_civil_list(value: list<civil_datetime, 2>) -> list<civil_datetime, 2> => pass_through(value)
     fn temporal_zone_map(value: map<i64, timezone>) -> map<i64, timezone> => pass_through(value)
@@ -76,4 +86,17 @@ test {
         assert len(retained) == 1
         assert eval(temporal_zone_snapshot, [source, retained, empty, _, empty]) == [source, retained, empty, _, empty]
     }
+    fn temporal_default_snapshot(value: atomic<TemporalDefaultSnapshot>) -> atomic<TemporalDefaultSnapshot> => pass_through(value)
+    test ordinary_temporal_defaults_are_retained_only_when_omitted {
+        let defaults: TemporalDefaultSnapshot = TemporalDefaultSnapshot()
+        let changed: TemporalDefaultSnapshot = TemporalDefaultSnapshot(zone: @[America/New_York])
+        assert defaults.zone == @[US/Eastern]
+        assert eval(temporal_default_snapshot, [defaults, changed, _, TemporalDefaultSnapshot()]) == [
+            defaults, changed, _, defaults
+        ]
+        # A supplied field must not validate the unused default recipe.
+        let explicit: TemporalOverriddenDefault = TemporalOverriddenDefault(zone: @[Etc/UTC])
+        assert explicit.zone == @[Etc/UTC]
+    }
+
 }
