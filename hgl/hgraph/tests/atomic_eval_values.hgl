@@ -57,6 +57,18 @@ test {
     fn atomic_required_value(value: atomic<AtomicRequiredPair>) -> atomic<AtomicRequiredPair> => pass_through(value)
     fn atomic_default_value(value: atomic<AtomicDefaultQuote>) -> atomic<AtomicDefaultQuote> => pass_through(value)
     fn atomic_book_value(value: atomic<AtomicSnapshotBook>) -> atomic<AtomicSnapshotBook> => pass_through(value)
+    fn atomic_child_book_value(value: atomic<AtomicChildBook>) -> atomic<AtomicChildBook> => pass_through(value)
+
+    const fn atomic_ordinary_child_book() -> AtomicChildBook {
+        var value: AtomicChildBook = AtomicChildBook(snapshot: AtomicDefaultQuote(bid: 1), sequence: 2)
+        value.snapshot.bid = 3
+        return value
+    }
+
+    # The ordinary payload erases field atomic markers; its temporal schema keeps them.
+    test atomic_snapshot_projects_nested_atomic_fields_to_ordinary_values {
+        assert eval(atomic_child_book_value, [atomic_ordinary_child_book(), _, AtomicChildBook(snapshot: AtomicDefaultQuote(bid: 0), sequence: 0)]) == [AtomicChildBook(snapshot: AtomicDefaultQuote(bid: 3), sequence: 2), _, AtomicChildBook(snapshot: AtomicDefaultQuote(bid: 0), sequence: 0)]
+    }
 
     test atomic_lists_publish_complete_empty_and_equal_snapshots {
         assert eval(atomic_list_value, [_, atomic_full_list(), atomic_empty_list(), _, atomic_empty_list(), atomic_other_list(), _]) == [_, atomic_full_list(), atomic_empty_list(), _, atomic_empty_list(), atomic_other_list(), _]
