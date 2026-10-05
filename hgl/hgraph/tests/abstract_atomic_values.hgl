@@ -11,6 +11,8 @@ struct PublicationSecond: PublicationEvent {
     items: list<i64>
     count: i64 = null
 }
+abstract struct PublicationSubEvent: PublicationEvent { }
+struct PublicationNestedEvent: PublicationSubEvent { items: list<i64> }
 abstract struct PublicationGenericEvent<T> {
     value: T
 }
@@ -46,6 +48,15 @@ test {
         ]
         assert eval(family_snapshot, []) == []
         assert eval(family_snapshot, [_, _, _]) == [_, _, _]
+
+        # An ancestor binding retains the concrete member held by a subfamily.
+        var child: PublicationNestedEvent = PublicationNestedEvent(label: "nested", items: [1])
+        let narrow: PublicationSubEvent = child
+        let ancestor: PublicationEvent = narrow
+        push(child.items, 2)
+        assert eval(family_snapshot, [ancestor, _, ancestor]) == [
+            PublicationNestedEvent(label: "nested", items: [1]), _, PublicationNestedEvent(label: "nested", items: [1])
+        ]
     }
 
     test atomic_family_replacement_retains_optional_field_presence {
