@@ -11,6 +11,29 @@ test {
     fn rolling_snapshots(value: rolling<RollingSnapshot, 2>) -> rolling<RollingSnapshot, 2> => pass_through(value)
     fn rolling_lists(value: rolling<list<i64>, 2>) -> rolling<list<i64>, 2> => pass_through(value)
 
+    fn concrete_ticks(value: rolling<i64, 2>) -> rolling<i64, 2> {
+        when { return delta_value(value) }
+    }
+    fn concrete_duration(value: rolling<i64, 5us, 1us>) -> rolling<i64, 5us, 1us> {
+        when { return delta_value(value) }
+    }
+    fn concrete_snapshots(value: rolling<RollingSnapshot, 2>) -> rolling<RollingSnapshot, 2> {
+        when { return delta_value(value) }
+    }
+    fn concrete_lists(value: rolling<list<i64>, 2>) -> rolling<list<i64>, 2> {
+        when { return delta_value(value) }
+    }
+
+    # An explicit rolling result accepts the same arrival as a generic T result.
+    test concrete_rolling_pass_through_preserves_arrival_payloads {
+        assert eval(concrete_ticks, [10, _, 10, 20]) == [10, _, 10, 20]
+        assert eval(concrete_duration, [10, _, 20]) == [10, _, 20]
+        let item: RollingSnapshot = RollingSnapshot(amount: 1, label: "same")
+        assert eval(concrete_snapshots, [item, _, item]) == [item, _, item]
+        let empty: list<i64> = []
+        assert eval(concrete_lists, [[1], _, empty, [2, 3]]) == [[1], _, empty, [2, 3]]
+    }
+
     # delta_value is one arrival. It never substitutes the held window or gates on all_valid.
     test rolling_publications_include_first_and_equal_arrivals {
         assert eval(rolling_ticks, [10, _, 10, 20, 30, _]) == [10, _, 10, 20, 30, _]
