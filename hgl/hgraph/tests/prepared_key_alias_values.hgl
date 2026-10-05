@@ -1,0 +1,39 @@
+module hgraph.std part prepared_key_alias_values_tests
+
+enum RetainedKeyMode { first = -1, second = 2 }
+
+test {
+    fn retained_zone_members(value: set<timezone>) -> set<timezone> => pass_through(value)
+    fn retained_zone_keys(value: map<timezone, timezone>) -> map<timezone, timezone> => pass_through(value)
+    fn retained_enum_keys(value: map<RetainedKeyMode, i64>) -> map<RetainedKeyMode, i64> => pass_through(value)
+
+    test immutable_prepared_zone_aliases_supply_sparse_members {
+        let original: timezone = @[UTC]
+        let alias: timezone = original
+        let retained: timezone = alias
+        assert eval(retained_zone_members, [delta<set<timezone>>(added: [original]), _, delta<set<timezone>>(removed: [retained]), delta<set<timezone>>(added: [alias])]) == [
+            delta<set<timezone>>(added: [retained]), _, delta<set<timezone>>(removed: [original]), delta<set<timezone>>(added: [original])
+        ]
+    }
+
+    # These values are prepared in statement order; using a local does not rebuild it.
+    test immutable_prepared_key_and_payload_aliases_survive_repeated_eval {
+        let first: timezone = @[US/Eastern]
+        let second: timezone = @[America/New_York]
+        let retained: timezone = first
+        let a: delta<map<timezone, timezone>> = delta<map<timezone, timezone>>(upsert: [retained: second])
+        let b: delta<map<timezone, timezone>> = delta<map<timezone, timezone>>(upsert: [second: first])
+        let remove: delta<map<timezone, timezone>> = delta<map<timezone, timezone>>(remove: [first])
+        assert eval(retained_zone_keys, [a, _, b, remove, a]) == [a, _, b, remove, a]
+        assert eval(retained_zone_keys, [a, _, b, remove, a]) == [a, _, b, remove, a]
+    }
+
+    test immutable_enum_aliases_retain_exact_key_type {
+        let first: RetainedKeyMode = RetainedKeyMode::first
+        let retained: RetainedKeyMode = first
+        let second: RetainedKeyMode = RetainedKeyMode::second
+        assert eval(retained_enum_keys, [delta<map<RetainedKeyMode, i64>>(upsert: [first: 1]), delta<map<RetainedKeyMode, i64>>(upsert: [retained: 1, second: 2]), _, delta<map<RetainedKeyMode, i64>>(remove: [retained])]) == [
+            delta<map<RetainedKeyMode, i64>>(upsert: [retained: 1]), delta<map<RetainedKeyMode, i64>>(upsert: [second: 2, first: 1]), _, delta<map<RetainedKeyMode, i64>>(remove: [first])
+        ]
+    }
+}
