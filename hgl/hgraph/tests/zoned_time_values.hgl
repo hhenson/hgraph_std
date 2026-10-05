@@ -81,9 +81,11 @@ test {
         var source: list<zoned_time> = []
         push(source, @09:30[US/Eastern])
         let retained: list<zoned_time> = source
-        source[0] = @09:30[America/New_York]
+        push(source, @09:30[America/New_York])
         let empty: list<zoned_time> = []
-        assert retained[0] != source[0]
+        assert len(retained) == 1
+        assert len(source) == 2
+        assert retained[0] != source[1]
         assert eval(zoned_time_list_snapshot, [source, retained, empty, _, empty]) == [source, retained, empty, _, empty]
         assert eval(zoned_time_list_snapshot, []) == []
     }
