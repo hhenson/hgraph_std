@@ -1,0 +1,163 @@
+module hgraph.std part zoned_time_values_tests
+
+struct ZonedTimeSnapshot {
+    opening: zoned_time
+    closing: zoned_time
+}
+
+struct ZonedTimeDefault {
+    opening: zoned_time = @09:30[US/Eastern]
+}
+
+test {
+    fn zoned_time_forward(value: zoned_time) -> zoned_time => pass_through(value)
+    fn zoned_time_atomic(value: atomic<zoned_time>) -> atomic<zoned_time> => pass_through(value)
+    fn zoned_time_fixed(value: list<zoned_time, 2>) -> list<zoned_time, 2> => pass_through(value)
+    fn zoned_time_pair(value: tuple<zoned_time, i64>) -> tuple<zoned_time, i64> => pass_through(value)
+    fn zoned_time_fields(value: ZonedTimeSnapshot) -> ZonedTimeSnapshot => pass_through(value)
+    fn zoned_time_map(value: map<i64, zoned_time>) -> map<i64, zoned_time> => pass_through(value)
+    fn zoned_time_snapshot(value: atomic<ZonedTimeSnapshot>) -> atomic<ZonedTimeSnapshot> => pass_through(value)
+    fn zoned_time_list_snapshot(value: atomic<list<zoned_time>>) -> atomic<list<zoned_time>> => pass_through(value)
+    fn zoned_time_nested(value: list<map<i64, atomic<ZonedTimeSnapshot>>, 2>) -> list<map<i64, atomic<ZonedTimeSnapshot>>, 2> => pass_through(value)
+
+    # A zone name is part of the value; aliases are not canonicalized.
+    test zoned_time_preserves_wall_time_exact_zone_and_equal_ticks {
+        let first: zoned_time = @09:30:00.123456[US/Eastern]
+        let alias: zoned_time = @09:30:00.123456[America/New_York]
+        let changed: zoned_time = @09:30:00.123457[US/Eastern]
+        assert first != alias
+        assert first != changed
+        assert eval(zoned_time_forward, [_, first, first, _, alias, changed, _]) == [_, first, first, _, alias, changed, _]
+        assert eval(zoned_time_forward, [_, _, _]) == [_, _, _]
+        assert eval(zoned_time_forward, []) == []
+    }
+
+    # No date or offset is needed, including wall times repeated or skipped on some dates.
+    test zoned_time_has_no_date_dependent_offset_resolution {
+        assert eval(zoned_time_forward, [@01:30[Europe/London], @02:30[Europe/Paris], @00:00[Etc/UTC], @23:59:59.999999[Etc/UTC]]) == [
+            @01:30[Europe/London], @02:30[Europe/Paris], @00:00[Etc/UTC], @23:59:59.999999[Etc/UTC]
+        ]
+        assert @09:30[UTC] != @09:30[Etc/UTC]
+    }
+
+    test zoned_time_scalar_atomic_and_delta_types_coincide {
+        let value: delta<atomic<zoned_time>> = @09:30[Europe/Paris]
+        assert eval(zoned_time_atomic, [value, _, value]) == [value, _, value]
+        assert eval(zoned_time_atomic, [_, _]) == [_, _]
+        assert eval(zoned_time_atomic, []) == []
+    }
+
+    # Missing children stay absent; equal child publications are still recorded.
+    test zoned_time_sparse_fixed_tuple_and_struct_publications {
+        let first: zoned_time = @09:30[US/Eastern]
+        let second: zoned_time = @16:00[US/Eastern]
+        assert eval(zoned_time_fixed, [delta<list<zoned_time, 2>>(items: [1: first]), _, delta<list<zoned_time, 2>>(items: [0: second, 1: first])]) == [
+            delta<list<zoned_time, 2>>(items: [1: first]), _, delta<list<zoned_time, 2>>(items: [1: first, 0: second])
+        ]
+        assert eval(zoned_time_pair, [(first, _), (_, 0), (first, _), _]) == [(first, _), (_, 0), (first, _), _]
+        assert eval(zoned_time_fields, [delta<ZonedTimeSnapshot>(opening: first), delta<ZonedTimeSnapshot>(closing: second), _, delta<ZonedTimeSnapshot>(opening: first)]) == [
+            delta<ZonedTimeSnapshot>(opening: first), delta<ZonedTimeSnapshot>(closing: second), _, delta<ZonedTimeSnapshot>(opening: first)
+        ]
+    }
+
+    test zoned_time_map_updates_remove_and_recreate {
+        assert eval(zoned_time_map, [delta<map<i64, zoned_time>>(upsert: [7: @09:30[US/Eastern]]), delta<map<i64, zoned_time>>(upsert: [7: @09:30[America/New_York]]), _, delta<map<i64, zoned_time>>(remove: [7]), delta<map<i64, zoned_time>>(upsert: [7: @09:30[US/Eastern]])]) == [
+            delta<map<i64, zoned_time>>(upsert: [7: @09:30[US/Eastern]]), delta<map<i64, zoned_time>>(upsert: [7: @09:30[America/New_York]]), _, delta<map<i64, zoned_time>>(remove: [7]), delta<map<i64, zoned_time>>(upsert: [7: @09:30[US/Eastern]])
+        ]
+    }
+
+    test zoned_time_atomic_snapshots_retain_independent_values {
+        var source: ZonedTimeSnapshot = ZonedTimeSnapshot(opening: @09:30[US/Eastern], closing: @16:00[US/Eastern])
+        let retained: ZonedTimeSnapshot = source
+        source.opening = @09:30[America/New_York]
+        assert retained.opening != source.opening
+        assert eval(zoned_time_snapshot, [retained, retained, _, source]) == [retained, retained, _, source]
+        assert eval(zoned_time_nested, [delta<list<map<i64, atomic<ZonedTimeSnapshot>>, 2>>(items: [1: delta<map<i64, atomic<ZonedTimeSnapshot>>>(upsert: [7: retained])]), _, delta<list<map<i64, atomic<ZonedTimeSnapshot>>, 2>>(items: [1: delta<map<i64, atomic<ZonedTimeSnapshot>>>(upsert: [7: source])])]) == [
+            delta<list<map<i64, atomic<ZonedTimeSnapshot>>, 2>>(items: [1: delta<map<i64, atomic<ZonedTimeSnapshot>>>(upsert: [7: retained])]), _, delta<list<map<i64, atomic<ZonedTimeSnapshot>>, 2>>(items: [1: delta<map<i64, atomic<ZonedTimeSnapshot>>>(upsert: [7: source])])
+        ]
+    }
+
+    test zoned_time_atomic_empty_list_is_a_present_snapshot {
+        var source: list<zoned_time> = []
+        push(source, @09:30[US/Eastern])
+        let retained: list<zoned_time> = source
+        source[0] = @09:30[America/New_York]
+        let empty: list<zoned_time> = []
+        assert retained[0] != source[0]
+        assert eval(zoned_time_list_snapshot, [source, retained, empty, _, empty]) == [source, retained, empty, _, empty]
+        assert eval(zoned_time_list_snapshot, []) == []
+    }
+
+    const fn zoned_time_default(value: zoned_time = @09:30[US/Eastern]) -> zoned_time { return value }
+    const fn zoned_time_unused_default(value: zoned_time = @09:30[Missing/UnusedDefault]) -> zoned_time { return value }
+    test zoned_time_defaults_materialize_only_when_selected {
+        let fields: ZonedTimeDefault = ZonedTimeDefault()
+        assert eval(zoned_time_forward, [fields.opening, zoned_time_default(), zoned_time_default(@09:30[America/New_York])]) == [
+            @09:30[US/Eastern], @09:30[US/Eastern], @09:30[America/New_York]
+        ]
+        assert zoned_time_unused_default(@00:00[Etc/UTC]) == @00:00[Etc/UTC]
+    }
+
+    fn zoned_time_replay_context(tick: i64) { when { } }
+    fn zoned_time_replayed(tick: i64, const samples: list<TimedValue<zoned_time>>) -> zoned_time {
+        zoned_time_replay_context(tick)
+        replay(samples)
+    }
+    test zoned_time_timed_replay_owns_values_and_restarts_cleanly {
+        var sample: TimedValue<zoned_time> = TimedValue<zoned_time>(time: @1970-01-01T00:00:00.000001Z, value: @09:30[US/Eastern])
+        var samples: list<TimedValue<zoned_time>> = []
+        push(samples, sample)
+        sample.time = @1970-01-01T00:00:00.000003Z
+        push(samples, sample)
+        sample.value = @09:30[America/New_York]
+        assert eval(zoned_time_replayed, tick: [1, 1, 1, 1], samples: samples) == [@09:30[US/Eastern], _, @09:30[US/Eastern], _]
+        assert eval(zoned_time_replayed, tick: [1, 1, 1, 1], samples: samples) == [@09:30[US/Eastern], _, @09:30[US/Eastern], _]
+        let empty: list<TimedValue<zoned_time>> = []
+        assert eval(zoned_time_replayed, tick: [1, 1], samples: empty) == [_, _]
+        assert eval(zoned_time_replayed, tick: [], samples: empty) == []
+    }
+
+    fn zoned_time_global_copy(value: zoned_time) -> zoned_time {
+        inject global_state
+        when {
+            set(global_state, "zoned_time.saved", delta_value(value))
+            let retained: delta<zoned_time> = get(global_state, "zoned_time.saved")
+            return retained
+        }
+    }
+    test zoned_time_global_state_retains_scalar_identity {
+        assert eval(zoned_time_global_copy, [@09:30[US/Eastern], _, @09:30[America/New_York], @09:30[US/Eastern]]) == [
+            @09:30[US/Eastern], _, @09:30[America/New_York], @09:30[US/Eastern]
+        ]
+    }
+
+    fn zoned_time_captures_match(trigger: i64, const expected: list<TimedValue<zoned_time>>) -> bool {
+        inject global_state
+        when {
+            let captured: list<TimedValue<zoned_time>> = get(global_state, "zoned_time.recording")
+            if len(captured) != len(expected) { return false }
+            var index: i64 = 0
+            while index < len(expected) {
+                if captured[index].time != expected[index].time { return false }
+                if captured[index].value != expected[index].value { return false }
+                index += 1
+            }
+            return true
+        }
+    }
+    fn zoned_time_record_observed(value: zoned_time, trigger: i64, const expected: list<TimedValue<zoned_time>>) -> bool {
+        record(pass_through(value), "zoned_time.recording")
+        zoned_time_captures_match(trigger, expected)
+    }
+    # The observer runs after recording, so the assertion does not depend on sink order.
+    test zoned_time_record_retains_exact_times_and_starts_empty_next_run {
+        var expected: list<TimedValue<zoned_time>> = []
+        push(expected, TimedValue<zoned_time>(time: @1970-01-01T00:00:00.000001Z, value: @09:30[US/Eastern]))
+        push(expected, TimedValue<zoned_time>(time: @1970-01-01T00:00:00.000003Z, value: @09:30[US/Eastern]))
+        push(expected, TimedValue<zoned_time>(time: @1970-01-01T00:00:00.000004Z, value: @09:30[America/New_York]))
+        assert eval(zoned_time_record_observed, value: [@09:30[US/Eastern], _, @09:30[US/Eastern], @09:30[America/New_York]], trigger: [_, _, _, _, 1], expected: expected) == [_, _, _, _, true]
+        let empty: list<TimedValue<zoned_time>> = []
+        assert eval(zoned_time_record_observed, value: [], trigger: [_, 1], expected: empty) == [_, true]
+        assert eval(zoned_time_record_observed, value: [_, _, _], trigger: [_, _, _, 1], expected: empty) == [_, _, _, true]
+    }
+}
