@@ -19,7 +19,7 @@ test {
     fn complete_key_map(value: atomic<map<PublicationKey, list<i64>>>) -> atomic<map<PublicationKey, list<i64>>> => pass_through(value)
 
     test tuple_members_use_complete_equality_and_membership_lifecycle {
-        assert eval(tuple_members, [delta<set<tuple<i64, str>>>(added: [(1, "a")]), delta<set<tuple<i64, str>>>(added: [(1, "a"), (2, "b")]), _, delta<set<tuple<i64, str>>>(removed: [(1, "a")]), delta<set<tuple<i64, str>>>(added: [(1, "a")])]) == [
+        assert eval(tuple_members, [delta<set<tuple<i64, str>>>(added: [(1, "a")]), delta<set<tuple<i64, str>>>(added: [(2, "b")]), _, delta<set<tuple<i64, str>>>(removed: [(1, "a")]), delta<set<tuple<i64, str>>>(added: [(1, "a")])]) == [
             delta<set<tuple<i64, str>>>(added: [(1, "a")]), delta<set<tuple<i64, str>>>(added: [(2, "b")]), _, delta<set<tuple<i64, str>>>(removed: [(1, "a")]), delta<set<tuple<i64, str>>>(added: [(1, "a")])
         ]
         assert eval(tuple_members, []) == []
@@ -35,7 +35,7 @@ test {
     }
 
     test struct_members_compare_all_fields_of_exact_nominal_keys {
-        assert eval(struct_members, [delta<set<PublicationKey>>(added: [PublicationKey(number: 1, label: "a")]), delta<set<PublicationKey>>(added: [PublicationKey(number: 1, label: "a"), PublicationKey(number: 1, label: "b")]), _, delta<set<PublicationKey>>(removed: [PublicationKey(number: 1, label: "a")])]) == [
+        assert eval(struct_members, [delta<set<PublicationKey>>(added: [PublicationKey(number: 1, label: "a")]), delta<set<PublicationKey>>(added: [PublicationKey(number: 1, label: "b")]), _, delta<set<PublicationKey>>(removed: [PublicationKey(number: 1, label: "a")])]) == [
             delta<set<PublicationKey>>(added: [PublicationKey(number: 1, label: "a")]), delta<set<PublicationKey>>(added: [PublicationKey(number: 1, label: "b")]), _, delta<set<PublicationKey>>(removed: [PublicationKey(number: 1, label: "a")])
         ]
         assert eval(struct_members, []) == []
