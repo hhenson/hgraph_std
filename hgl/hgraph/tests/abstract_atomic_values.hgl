@@ -31,6 +31,15 @@ test {
     test atomic_family_publications_retain_exact_concrete_members {
         let first: PublicationEvent = PublicationFirst(label: "same", items: [1])
         let second: PublicationEvent = PublicationSecond(label: "same", items: [1])
+        assert first != second
+        let captured = eval(family_snapshot, [first, second])
+        let captured_first = captured[0]
+        let captured_second = captured[1]
+        if captured_first != null {
+            if captured_second != null {
+                assert captured_first != captured_second
+            } else { assert false }
+        } else { assert false }
         assert eval(family_snapshot, [first, first, _, second, first, _]) == [
             PublicationFirst(label: "same", items: [1]), PublicationFirst(label: "same", items: [1]), _,
             PublicationSecond(label: "same", items: [1]), PublicationFirst(label: "same", items: [1]), _
