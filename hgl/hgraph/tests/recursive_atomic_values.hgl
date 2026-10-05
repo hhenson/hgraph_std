@@ -20,10 +20,17 @@ struct PublicationLink<T> {
     next: atomic<PublicationLink<T>> = null
 }
 
+struct PublicationSwap<A, B> {
+    left: A
+    right: B
+    next: atomic<PublicationSwap<B, A>> = null
+}
+
 test {
     fn chain_snapshot(value: atomic<PublicationChain>) -> atomic<PublicationChain> => pass_through(value)
     fn mutual_snapshot(value: atomic<PublicationLeft>) -> atomic<PublicationLeft> => pass_through(value)
     fn generic_chain_snapshot(value: atomic<PublicationLink<str>>) -> atomic<PublicationLink<str>> => pass_through(value)
+    fn swapped_chain_snapshot(value: atomic<PublicationSwap<str, i64>>) -> atomic<PublicationSwap<str, i64>> => pass_through(value)
     fn chain_list(value: atomic<list<PublicationChain>>) -> atomic<list<PublicationChain>> => pass_through(value)
     fn chain_child(value: list<atomic<PublicationChain>, 2>) -> list<atomic<PublicationChain>, 2> => pass_through(value)
 
@@ -67,6 +74,15 @@ test {
         let leaf: PublicationLink<str> = PublicationLink<str>(value: "")
         assert eval(generic_chain_snapshot, [deep, _, leaf, deep]) == [deep, _, leaf, deep]
         assert eval(generic_chain_snapshot, []) == []
+
+        # Swapping the parameters reaches two specializations, then repeats.
+        let swapped: PublicationSwap<str, i64> = PublicationSwap<str, i64>(
+            left: "a", right: 1, next: PublicationSwap<i64, str>(
+                left: 2, right: "b", next: PublicationSwap<str, i64>(left: "c", right: 3)
+            )
+        )
+        let swapped_leaf: PublicationSwap<str, i64> = PublicationSwap<str, i64>(left: "", right: 0)
+        assert eval(swapped_chain_snapshot, [swapped, _, swapped_leaf, swapped]) == [swapped, _, swapped_leaf, swapped]
     }
 
     test recursive_complete_values_nest_in_containers_and_sparse_children {
