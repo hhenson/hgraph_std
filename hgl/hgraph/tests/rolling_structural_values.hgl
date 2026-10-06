@@ -28,8 +28,16 @@ test {
 
     # Omitted siblings stay omitted; a held label or window is never substituted.
     test rolling_tuple_and_named_children_preserve_omissions {
-        assert eval(rolling_tuple_child, [(10, _), (_, ""), _, (10, _), (20, "next")]) == [
-            (10, _), (_, ""), _, (10, _), (20, "next")
+        assert eval(rolling_tuple_child, [
+            delta<tuple<rolling<i64, 2>, str>>(items: [0: 10]),
+            delta<tuple<rolling<i64, 2>, str>>(items: [1: ""]), _,
+            delta<tuple<rolling<i64, 2>, str>>(items: [0: 10]),
+            delta<tuple<rolling<i64, 2>, str>>(items: [0: 20, 1: "next"])
+        ]) == [
+            delta<tuple<rolling<i64, 2>, str>>(items: [0: 10]),
+            delta<tuple<rolling<i64, 2>, str>>(items: [1: ""]), _,
+            delta<tuple<rolling<i64, 2>, str>>(items: [0: 10]),
+            delta<tuple<rolling<i64, 2>, str>>(items: [1: "next", 0: 20])
         ]
         assert eval(rolling_named_child, [
             delta<RollingFields>(arrivals: 10), delta<RollingFields>(label: ""), _,
