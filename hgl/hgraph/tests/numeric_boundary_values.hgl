@@ -1,0 +1,30 @@
+module hgraph.std part numeric_boundary_values_tests
+
+test {
+    fn boundary_integer(value: i64) -> i64 => pass_through(value)
+    fn boundary_float(value: f64) -> f64 => pass_through(value)
+
+    # Endpoints are data: forwarding needs no overflowing arithmetic or conversion.
+    test integer_endpoints_survive_equal_publications_and_silence {
+        assert eval(boundary_integer, [
+            -9223372036854775808, _, 9223372036854775807,
+            9223372036854775807, -9223372036854775808, _
+        ]) == [
+            -9223372036854775808, _, 9223372036854775807,
+            9223372036854775807, -9223372036854775808, _
+        ]
+    }
+
+    # Both zero spellings remain publications; equality does not inspect their sign bits.
+    test finite_float_boundaries_survive_pass_through {
+        assert eval(boundary_float, [
+            -0.0, 0.0, _, 4.9406564584124654e-324, -4.9406564584124654e-324,
+            1.7976931348623157e308, -1.7976931348623157e308,
+            1.7976931348623157e308, _
+        ]) == [
+            -0.0, 0.0, _, 4.9406564584124654e-324, -4.9406564584124654e-324,
+            1.7976931348623157e308, -1.7976931348623157e308,
+            1.7976931348623157e308, _
+        ]
+    }
+}

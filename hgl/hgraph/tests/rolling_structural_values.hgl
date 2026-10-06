@@ -1,0 +1,61 @@
+module hgraph.std part rolling_structural_values_tests
+
+struct RollingFields {
+    arrivals: rolling<i64, 2>
+    label: str
+}
+
+test {
+    fn rolling_fixed_child(value: list<rolling<i64, 2>, 2>) -> list<rolling<i64, 2>, 2> => pass_through(value)
+    fn rolling_tuple_child(value: tuple<rolling<i64, 2>, str>) -> tuple<rolling<i64, 2>, str> => pass_through(value)
+    fn rolling_named_child(value: RollingFields) -> RollingFields => pass_through(value)
+    fn rolling_map_child(value: map<str, rolling<i64, 2>>) -> map<str, rolling<i64, 2>> => pass_through(value)
+
+    # Each sparse child carries one arrival, even before its window is ready.
+    test rolling_fixed_children_keep_independent_sparse_arrivals {
+        assert eval(rolling_fixed_child, [
+            delta<list<rolling<i64, 2>, 2>>(items: [1: 10]), _,
+            delta<list<rolling<i64, 2>, 2>>(items: [0: 20]),
+            delta<list<rolling<i64, 2>, 2>>(items: [1: 10]),
+            delta<list<rolling<i64, 2>, 2>>(items: [0: 30, 1: 40]), _
+        ]) == [
+            delta<list<rolling<i64, 2>, 2>>(items: [1: 10]), _,
+            delta<list<rolling<i64, 2>, 2>>(items: [0: 20]),
+            delta<list<rolling<i64, 2>, 2>>(items: [1: 10]),
+            delta<list<rolling<i64, 2>, 2>>(items: [1: 40, 0: 30]), _
+        ]
+    }
+
+    # Omitted siblings stay omitted; a held label or window is never substituted.
+    test rolling_tuple_and_named_children_preserve_omissions {
+        assert eval(rolling_tuple_child, [(10, _), (_, ""), _, (10, _), (20, "next")]) == [
+            (10, _), (_, ""), _, (10, _), (20, "next")
+        ]
+        assert eval(rolling_named_child, [
+            delta<RollingFields>(arrivals: 10), delta<RollingFields>(label: ""), _,
+            delta<RollingFields>(arrivals: 10), delta<RollingFields>(label: "next", arrivals: 20)
+        ]) == [
+            delta<RollingFields>(arrivals: 10), delta<RollingFields>(label: ""), _,
+            delta<RollingFields>(arrivals: 10), delta<RollingFields>(arrivals: 20, label: "next")
+        ]
+    }
+
+    # Removing a key removes its window; recreating it starts with one arrival.
+    test rolling_map_children_remove_and_recreate {
+        assert eval(rolling_map_child, [
+            delta<map<str, rolling<i64, 2>>>(upsert: ["a": 10, "b": 20]),
+            delta<map<str, rolling<i64, 2>>>(upsert: ["a": 10]), _,
+            delta<map<str, rolling<i64, 2>>>(remove: ["a"]),
+            delta<map<str, rolling<i64, 2>>>(upsert: ["a": 30]), _
+        ]) == [
+            delta<map<str, rolling<i64, 2>>>(upsert: ["b": 20, "a": 10]),
+            delta<map<str, rolling<i64, 2>>>(upsert: ["a": 10]), _,
+            delta<map<str, rolling<i64, 2>>>(remove: ["a"]),
+            delta<map<str, rolling<i64, 2>>>(upsert: ["a": 30]), _
+        ]
+        assert eval(rolling_fixed_child, [_, _]) == [_, _]
+        assert eval(rolling_tuple_child, []) == []
+        assert eval(rolling_named_child, [_, _]) == [_, _]
+        assert eval(rolling_map_child, []) == []
+    }
+}
