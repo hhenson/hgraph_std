@@ -66,4 +66,24 @@ test {
         assert eval(rolling_named_child, [_, _]) == [_, _]
         assert eval(rolling_map_child, []) == []
     }
+
+    fn map_window_ready(value: map<str, rolling<i64, 2>>) -> bool {
+        when {
+            for key, child in items(value, modified) {
+                if key == "a" && valid(child) { return all_valid(child) }
+            }
+        }
+    }
+    fn forwarded_map_window_ready(value: map<str, rolling<i64, 2>>) -> bool {
+        map_window_ready(pass_through(value))
+    }
+    # Removal discards retained arrivals; recreation cannot inherit readiness.
+    test recreated_map_window_starts_unready {
+        assert eval(forwarded_map_window_ready, [
+            delta<map<str, rolling<i64, 2>>>(upsert: ["a": 10]),
+            delta<map<str, rolling<i64, 2>>>(upsert: ["a": 10]),
+            delta<map<str, rolling<i64, 2>>>(remove: ["a"]),
+            delta<map<str, rolling<i64, 2>>>(upsert: ["a": 30])
+        ]) == [false, true, _, false]
+    }
 }
