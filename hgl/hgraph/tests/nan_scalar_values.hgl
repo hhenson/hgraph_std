@@ -22,8 +22,11 @@ test {
     }
 
     test replay_preserves_retained_nan_arrivals {
-        let sample: f64 = nan_native::logarithm(-1.0)
-        assert eval(forwarded_nan_classification, [sample, _, sample, 0.0]) == [true, _, true, false]
+        let captured = eval(logarithm_value, [-1.0])
+        let sample = captured[0]
+        if sample != null {
+            assert eval(forwarded_nan_classification, [sample, _, sample, 0.0]) == [true, _, true, false]
+        } else { assert false }
     }
 
     fn nan_comparison_rules(value: f64) -> bool {
