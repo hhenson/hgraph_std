@@ -6,6 +6,7 @@ no Python, C++ or Rust implementation and selects no target provider.
 
 - [Standard module](hgl/hgraph/standard.hgl), with control, stream and temporal parts
 - [Operator contracts](hgl/hgraph/operators.hgl)
+- [Date to datetime conversion](docs/date-conversion.md)
 - [Ordinary scalar replay and record](docs/replay-record.md), also configured by `eval`
 - [HGL implementations](hgl/hgraph/impl)
 - [Behaviour tests](hgl/hgraph/tests)
