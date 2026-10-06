@@ -1,0 +1,75 @@
+module hgraph.std part nan_scalar_values_tests
+
+use hgraph.native as nan_native
+
+test {
+    fn nan_classification(value: f64) -> bool {
+        when { return value != value }
+    }
+    fn forwarded_nan_classification(value: f64) -> bool {
+        nan_classification(pass_through(value))
+    }
+    fn logarithm_value(value: f64) -> f64 {
+        when { return nan_native::logarithm(value) }
+    }
+    fn generated_nan_classification(value: f64) -> bool {
+        forwarded_nan_classification(logarithm_value(value))
+    }
+
+    # A NaN is a present value; test its classification rather than NaN equality.
+    test nan_arrivals_survive_generation_and_pass_through {
+        assert eval(generated_nan_classification, [-1.0, _, -1.0, 1.0, _]) == [true, _, true, false, _]
+    }
+
+    test replay_preserves_retained_nan_arrivals {
+        let captured = eval(logarithm_value, [-1.0])
+        let sample = captured[0]
+        if sample != null {
+            assert eval(forwarded_nan_classification, [sample, _, sample, 0.0]) == [true, _, true, false]
+        } else { assert false }
+    }
+
+    fn nan_comparison_rules(value: f64) -> bool {
+        when {
+            if value == value { return false }
+            if !(value != value) { return false }
+            if value < value || value <= value || value > value || value >= value { return false }
+            if value == 1.0 || 1.0 == value { return false }
+            if !(value != 1.0) || !(1.0 != value) { return false }
+            if value < 1.0 || value <= 1.0 || value > 1.0 || value >= 1.0 { return false }
+            if 1.0 < value || 1.0 <= value || 1.0 > value || 1.0 >= value { return false }
+            return true
+        }
+    }
+    fn generated_nan_comparisons(value: f64) -> bool {
+        nan_comparison_rules(pass_through(logarithm_value(value)))
+    }
+    test nan_comparisons_are_unordered_in_both_operand_positions {
+        assert eval(generated_nan_comparisons, [-1.0, _, -1.0]) == [true, _, true]
+    }
+
+    fn nan_record_matches(trigger: i64) -> bool {
+        inject global_state
+        when {
+            let captured: list<TimedValue<f64>> = get(global_state, "nan.recording")
+            if len(captured) != 3 { return false }
+            if captured[0].time != @1970-01-01T00:00:00.000001Z { return false }
+            if captured[1].time != @1970-01-01T00:00:00.000003Z { return false }
+            if captured[2].time != @1970-01-01T00:00:00.000004Z { return false }
+            if !(captured[0].value != captured[0].value) { return false }
+            if !(captured[1].value != captured[1].value) { return false }
+            if captured[2].value != 0.0 { return false }
+            return true
+        }
+    }
+    fn record_nan_arrivals(value: f64, trigger: i64) -> bool {
+        record(pass_through(logarithm_value(value)), "nan.recording")
+        nan_record_matches(trigger)
+    }
+    # The later observer checks owned payloads, counts, and actual tick times.
+    test recording_retains_nan_classification_and_timestamps {
+        assert eval(record_nan_arrivals,
+            value: [-1.0, _, -1.0, 1.0], trigger: [_, _, _, _, 1]
+        ) == [_, _, _, _, true]
+    }
+}

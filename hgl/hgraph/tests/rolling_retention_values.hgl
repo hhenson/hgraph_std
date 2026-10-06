@@ -1,0 +1,63 @@
+module hgraph.std part rolling_retention_values_tests
+
+test {
+    fn release_retained_arrivals(value: rolling<i64, 5us, 5us>, release: i64) -> rolling<i64, 5us, 5us> {
+        inject global_state
+        inject clock
+        start {
+            let empty: list<TimedValue<rolling<i64, 5us, 5us>>> = []
+            set(global_state, "rolling.retained", empty)
+        }
+        when valid(value) && modified(value) {
+            var saved: list<TimedValue<rolling<i64, 5us, 5us>>> = get(global_state, "rolling.retained")
+            push(saved, TimedValue<rolling<i64, 5us, 5us>>(time: clock.evaluation_time, value: delta_value(value)))
+        }
+        when valid(release) && modified(release) {
+            let saved: list<TimedValue<rolling<i64, 5us, 5us>>> = get(global_state, "rolling.retained")
+            return saved[delta_value(release)].value
+        }
+    }
+    fn retained_arrival_ready(value: rolling<i64, 5us, 5us>) -> bool {
+        when valid(value) && modified(value) { return all_valid(value) }
+    }
+    fn delayed_arrival_readiness(value: rolling<i64, 5us, 5us>, release: i64) -> bool {
+        retained_arrival_ready(pass_through(release_retained_arrivals(value, release)))
+    }
+
+    # Source arrivals span only 2us; releases span 5us, then evict the first arrival.
+    test delayed_rolling_readiness_uses_new_publication_times {
+        assert eval(delayed_arrival_readiness,
+            value: [10, 20, 30], release: [_, _, _, 0, _, _, _, _, 1, 2, _]
+        ) == [_, _, _, false, _, _, _, _, true, false, _]
+        assert eval(release_retained_arrivals,
+            value: [10, 20, 30], release: [_, _, _, 0, _, _, _, _, 1, 2, _]
+        ) == [_, _, _, 10, _, _, _, _, 20, 30, _]
+    }
+
+    fn delayed_record_matches(trigger: i64) -> bool {
+        inject global_state
+        when {
+            let captured: list<TimedValue<rolling<i64, 5us, 5us>>> = get(global_state, "rolling.delayed.record")
+            if len(captured) != 3 { return false }
+            if captured[0].time != @1970-01-01T00:00:00.000004Z { return false }
+            if captured[1].time != @1970-01-01T00:00:00.000009Z { return false }
+            if captured[2].time != @1970-01-01T00:00:00.000010Z { return false }
+            if captured[0].value != 10 { return false }
+            if captured[1].value != 20 { return false }
+            if captured[2].value != 30 { return false }
+            return true
+        }
+    }
+    fn record_delayed_arrivals(value: rolling<i64, 5us, 5us>, release: i64, trigger: i64) -> bool {
+        record(pass_through(release_retained_arrivals(value, release)), "rolling.delayed.record")
+        delayed_record_matches(trigger)
+    }
+
+    # Observe after the last release so sink order cannot affect the recording check.
+    test delayed_rolling_recording_retains_arrivals_and_actual_output_times {
+        assert eval(record_delayed_arrivals,
+            value: [10, 20, 30], release: [_, _, _, 0, _, _, _, _, 1, 2],
+            trigger: [_, _, _, _, _, _, _, _, _, _, 1]
+        ) == [_, _, _, _, _, _, _, _, _, _, true]
+    }
+}

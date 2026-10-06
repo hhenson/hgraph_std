@@ -1,0 +1,96 @@
+module hgraph.std part delta_identity_values_tests
+
+struct IdentityFields<T> { left: T
+    right: T }
+struct IdentityPublication<T> { value: delta<T> }
+struct IdentityBatch<T> { values: list<IdentityPublication<T>> }
+
+test {
+    fn identity_replay_context(tick: i64) { when { } }
+
+    # Shape requirements propagate through both generic structs, including temporal children.
+    const fn identity_samples<T>(first: delta<T>, second: delta<T>) -> list<TimedValue<T>> {
+        var item: IdentityPublication<T> = IdentityPublication<T>(value: first)
+        var items: list<IdentityPublication<T>> = []
+        push(items, item)
+        item.value = second
+        push(items, item)
+        var batch: IdentityBatch<T> = IdentityBatch<T>(values: items)
+        let retained: IdentityBatch<T> = batch
+        let empty: list<IdentityPublication<T>> = []
+        batch.values = empty
+        item.value = first
+        var samples: list<TimedValue<T>> = []
+        push(samples, TimedValue<T>(time: @1970-01-01T00:00:00.000001Z, value: retained.values[0].value))
+        push(samples, TimedValue<T>(time: @1970-01-01T00:00:00.000003Z, value: retained.values[1].value))
+        return samples
+    }
+
+    fn identity_replay_set(tick: i64) -> set<i64> {
+        identity_replay_context(tick)
+        pass_through(replay(identity_samples(delta<set<i64>>(added: [1, 2]), delta<set<i64>>(removed: [1]))))
+    }
+    fn identity_replay_nested(tick: i64) -> list<map<i64, i64>, 2> {
+        identity_replay_context(tick)
+        pass_through(replay(identity_samples(
+            delta<list<map<i64, i64>, 2>>(items: [1: delta<map<i64, i64>>(upsert: [7: 10, 8: 20])]),
+            delta<list<map<i64, i64>, 2>>(items: [1: delta<map<i64, i64>>(remove: [7])])
+        )))
+    }
+    fn identity_replay_numbers(tick: i64) -> IdentityFields<i64> {
+        identity_replay_context(tick)
+        pass_through(replay(identity_samples(delta<IdentityFields<i64>>(left: 10), delta<IdentityFields<i64>>(right: 20))))
+    }
+    fn identity_replay_text(tick: i64) -> IdentityFields<str> {
+        identity_replay_context(tick)
+        pass_through(replay(identity_samples(delta<IdentityFields<str>>(right: ""), delta<IdentityFields<str>>(left: "next"))))
+    }
+
+    # Retained removals keep their meaning; owning copies never fill omitted children.
+    test generic_delta_batches_retain_exact_shapes_and_independent_payloads {
+        assert eval(identity_replay_set, tick: [1, 1, 1, 1]) == [
+            delta<set<i64>>(added: [1, 2]), _, delta<set<i64>>(removed: [1]), _
+        ]
+        assert eval(identity_replay_nested, tick: [1, 1, 1, 1]) == [
+            delta<list<map<i64, i64>, 2>>(items: [1: delta<map<i64, i64>>(upsert: [8: 20, 7: 10])]), _,
+            delta<list<map<i64, i64>, 2>>(items: [1: delta<map<i64, i64>>(remove: [7])]), _
+        ]
+        assert eval(identity_replay_numbers, tick: [1, 1, 1, 1]) == [
+            delta<IdentityFields<i64>>(left: 10), _, delta<IdentityFields<i64>>(right: 20), _
+        ]
+        assert eval(identity_replay_text, tick: [1, 1, 1, 1]) == [
+            delta<IdentityFields<str>>(right: ""), _, delta<IdentityFields<str>>(left: "next"), _
+        ]
+    }
+
+    fn identity_global_copy<T>(value: T, const replacement: delta<T>) -> T {
+        inject global_state
+        when {
+            set(global_state, "identity.saved", delta_value(value))
+            var entry: delta<T> = get(global_state, "identity.saved")
+            let retained: IdentityPublication<T> = IdentityPublication<T>(value: entry)
+            entry = replacement
+            return retained.value
+        }
+    }
+    fn identity_global_fields(value: IdentityFields<i64>) -> IdentityFields<i64> {
+        identity_global_copy(value, delta<IdentityFields<i64>>(left: 99, right: 99))
+    }
+    fn identity_global_nested(value: list<map<i64, i64>, 2>) -> list<map<i64, i64>, 2> {
+        identity_global_copy(value, delta<list<map<i64, i64>, 2>>(items: [0: delta<map<i64, i64>>(upsert: [9: 99])]))
+    }
+
+    # Replacing a typed global entry cannot change a previously obtained owning copy.
+    test global_delta_copies_survive_replacement_in_distinct_families {
+        assert eval(identity_global_fields, [delta<IdentityFields<i64>>(left: 1), _, delta<IdentityFields<i64>>(right: 2)]) == [
+            delta<IdentityFields<i64>>(left: 1), _, delta<IdentityFields<i64>>(right: 2)
+        ]
+        assert eval(identity_global_nested, [
+            delta<list<map<i64, i64>, 2>>(items: [1: delta<map<i64, i64>>(upsert: [7: 10])]), _,
+            delta<list<map<i64, i64>, 2>>(items: [1: delta<map<i64, i64>>(remove: [7])])
+        ]) == [
+            delta<list<map<i64, i64>, 2>>(items: [1: delta<map<i64, i64>>(upsert: [7: 10])]), _,
+            delta<list<map<i64, i64>, 2>>(items: [1: delta<map<i64, i64>>(remove: [7])])
+        ]
+    }
+}

@@ -1,0 +1,55 @@
+module hgraph.std part infinite_float_values_tests
+
+test {
+    # The operator contract defines 1e308 * 2.0 as positive infinity.
+    fn doubled_float(value: f64) -> f64 {
+        when { return value * 2.0 }
+    }
+    fn classify_float(value: f64) -> i64 {
+        when {
+            if value > 1.7976931348623157e308 { return 1 }
+            if value < -1.7976931348623157e308 { return -1 }
+            return 0
+        }
+    }
+    fn classify_forwarded_float(value: f64) -> i64 {
+        classify_float(pass_through(doubled_float(value)))
+    }
+
+    # Finite and both infinite signs remain distinct after generic forwarding.
+    test runtime_infinities_survive_pass_through_and_silence {
+        assert eval(classify_forwarded_float, [0.5, _, 1e308, -1e308, 1e308, _]) == [
+            0, _, 1, -1, 1, _
+        ]
+    }
+
+    fn infinite_record_matches(trigger: i64) -> bool {
+        inject global_state
+        when {
+            let captured: list<TimedValue<f64>> = get(global_state, "infinite.recording")
+            if len(captured) != 4 { return false }
+            if captured[0].time != @1970-01-01T00:00:00.000001Z { return false }
+            if captured[1].time != @1970-01-01T00:00:00.000003Z { return false }
+            if captured[2].time != @1970-01-01T00:00:00.000004Z { return false }
+            if captured[3].time != @1970-01-01T00:00:00.000005Z { return false }
+            if captured[0].value != 1.0 { return false }
+            if captured[1].value <= 1.7976931348623157e308 { return false }
+            if captured[2].value >= -1.7976931348623157e308 { return false }
+            if captured[1].value != captured[3].value { return false }
+            if captured[1].value == captured[2].value { return false }
+            return true
+        }
+    }
+    fn record_infinite_floats(value: f64, trigger: i64) -> bool {
+        record(pass_through(doubled_float(value)), "infinite.recording")
+        infinite_record_matches(trigger)
+    }
+
+    # Observe later: recording owns earlier values and uses actual publication times.
+    test recording_retains_finite_and_infinite_payloads {
+        assert eval(record_infinite_floats,
+            value: [0.5, _, 1e308, -1e308, 1e308, _],
+            trigger: [_, _, _, _, _, _, 1]
+        ) == [_, _, _, _, _, _, true]
+    }
+}
