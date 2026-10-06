@@ -3,6 +3,7 @@ module hgraph.std part standard_tests
 test {
     fn convert_integer(ts: f64) -> i64 => to_int(ts)
     fn convert_float(ts: i64) -> f64 => to_float(ts)
+    fn convert_datetime(ts: date) -> datetime => to_datetime(ts)
     fn member_source(ts: i64) -> set<i64> {
         inject out
         when { if ts > 0 { upsert(out, ts) } else { discard(out, -ts) } }
@@ -11,6 +12,11 @@ test {
     test numeric_conversions_truncate {
         assert eval(convert_integer, ts: [_, 1.9, -1.9, 0.0]) == [_, 1, -1, 0]
         assert eval(convert_float, ts: [_, 0, -7]) == [_, 0.0, -7.0]
+    }
+    test date_conversion_preserves_ticks_at_utc_midnight {
+        assert eval(convert_datetime, ts: [@1969-12-31, _, @1970-01-01, @2024-02-29, @2024-02-29]) ==
+            [@1969-12-31T00:00Z, _, @1970-01-01T00:00Z, @2024-02-29T00:00Z, @2024-02-29T00:00Z]
+        assert eval(convert_datetime, ts: [_, _, _]) == [_, _, _]
     }
     test membership_seeds_and_resamples {
         assert eval(membership, ts: [_, 1, 2, -1], item: [1, _, 1, _]) == [false, true, true, false]
