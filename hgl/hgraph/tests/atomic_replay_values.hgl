@@ -1,0 +1,103 @@
+module hgraph.std part atomic_replay_values_tests
+
+struct AtomicReplayPayload {
+    values: list<i64>
+    label: str = "default"
+}
+
+test {
+    const fn atomic_replay_nonempty() -> list<i64> { return [1, 2] }
+    const fn atomic_replay_empty() -> list<i64> { return [] }
+    fn atomic_replay_context(tick: i64) { when { } }
+
+    const fn atomic_explicit_timed_values() -> list<TimedValue<atomic<list<i64>>>> {
+        var values: list<TimedValue<atomic<list<i64>>>> = []
+        push(values, TimedValue<atomic<list<i64>>>(time: @1970-01-01T00:00:00.000001Z, value: atomic_replay_nonempty()))
+        push(values, TimedValue<atomic<list<i64>>>(time: @1970-01-01T00:00:00.000003Z, value: []))
+        push(values, TimedValue<atomic<list<i64>>>(time: @1970-01-01T00:00:00.000004Z, value: []))
+        return values
+    }
+    fn atomic_explicit_replay(tick: i64) -> atomic<list<i64>> {
+        atomic_replay_context(tick)
+        replay(atomic_explicit_timed_values())
+    }
+    test atomic_replay_exact_origin_preserves_empty_and_equal_publications {
+        assert eval(atomic_explicit_replay, [1, 1, 1, 1, 1, 1]) == [atomic_replay_nonempty(), _, atomic_replay_empty(), atomic_replay_empty(), _, _]
+    }
+
+    # An expected exact TimedValue type fixes T before checking the payload.
+    const fn atomic_expected_timed_values() -> list<TimedValue<atomic<list<i64>>>> {
+        var values: list<TimedValue<atomic<list<i64>>>> = []
+        let first: TimedValue<atomic<list<i64>>> = TimedValue(time: @1970-01-01T00:00:00.000002Z, value: [])
+        push(values, first)
+        return values
+    }
+    fn atomic_expected_replay(tick: i64) -> atomic<list<i64>> {
+        atomic_replay_context(tick)
+        replay(atomic_expected_timed_values())
+    }
+    fn atomic_empty_timed_replay(tick: i64) -> atomic<list<i64>> {
+        atomic_replay_context(tick)
+        let values: list<TimedValue<atomic<list<i64>>>> = []
+        replay(values)
+    }
+    test atomic_replay_expected_origin_and_empty_typed_list {
+        assert eval(atomic_expected_replay, [1, 1, 1, 1]) == [_, atomic_replay_empty(), _, _]
+        assert eval(atomic_empty_timed_replay, [1, 1, 1, 1]) == [_, _, _, _]
+        assert eval(atomic_empty_timed_replay, []) == []
+    }
+
+    # Constructor and list retention are separate owning boundaries.
+    const fn atomic_retained_samples() -> list<TimedValue<atomic<AtomicReplayPayload>>> {
+        var source: AtomicReplayPayload = AtomicReplayPayload(values: atomic_replay_nonempty(), label: "captured")
+        var sample: TimedValue<atomic<AtomicReplayPayload>> = TimedValue<atomic<AtomicReplayPayload>>(time: @1970-01-01T00:00:00.000001Z, value: source)
+        var samples: list<TimedValue<atomic<AtomicReplayPayload>>> = []
+        push(samples, sample)
+        sample.time = @1970-01-01T00:00:00.000003Z
+        push(samples, sample)
+        push(source.values, 99)
+        source.label = "source changed"
+        push(sample.value.values, 77)
+        sample.value.label = "sample changed"
+        return samples
+    }
+    fn atomic_retained_replay(tick: i64) -> atomic<AtomicReplayPayload> {
+        atomic_replay_context(tick)
+        replay(atomic_retained_samples())
+    }
+    test atomic_timed_captures_retain_nested_source_independently {
+        assert eval(atomic_retained_replay, [1, 1, 1, 1]) == [AtomicReplayPayload(values: atomic_replay_nonempty(), label: "captured"), _, AtomicReplayPayload(values: atomic_replay_nonempty(), label: "captured"), _]
+    }
+
+    const fn atomic_owned_captures_are_independent() -> bool {
+        var source: list<i64> = []
+        push(source, 1)
+        let sample: TimedValue<atomic<list<i64>>> = TimedValue<atomic<list<i64>>>(time: @1970-01-01T00:00:00.000001Z, value: source)
+        var samples: list<TimedValue<atomic<list<i64>>>> = []
+        push(samples, sample)
+        push(samples, sample)
+        push(source, 2)
+        var independent = samples[0]
+        push(independent.value, 3)
+        push(samples[0].value, 4)
+        return len(source) == 2 && source[1] == 2 && len(sample.value) == 1 && len(samples[0].value) == 2 && samples[0].value[1] == 4 && len(samples[1].value) == 1 && samples[1].value[0] == 1 && len(independent.value) == 2 && independent.value[1] == 3
+    }
+    test atomic_ordinary_retention_does_not_alias_sibling_captures {
+        assert atomic_owned_captures_are_independent()
+    }
+
+    # The outer structural shape stays the TimedValue argument, including atomic children.
+    const fn atomic_sparse_timed_values() -> list<TimedValue<map<i64, atomic<list<i64>>>>> {
+        var samples: list<TimedValue<map<i64, atomic<list<i64>>>>> = []
+        push(samples, TimedValue(time: @1970-01-01T00:00:00.000001Z, value: delta<map<i64, atomic<list<i64>>>>(upsert: [7: atomic_replay_empty()])))
+        push(samples, TimedValue(time: @1970-01-01T00:00:00.000003Z, value: delta<map<i64, atomic<list<i64>>>>(upsert: [7: atomic_replay_nonempty()])))
+        return samples
+    }
+    fn atomic_sparse_replay(tick: i64) -> map<i64, atomic<list<i64>>> {
+        atomic_replay_context(tick)
+        replay(atomic_sparse_timed_values())
+    }
+    test atomic_children_preserve_the_structural_timed_value_origin {
+        assert eval(atomic_sparse_replay, [1, 1, 1, 1]) == [delta<map<i64, atomic<list<i64>>>>(upsert: [7: atomic_replay_empty()]), _, delta<map<i64, atomic<list<i64>>>>(upsert: [7: atomic_replay_nonempty()]), _]
+    }
+}

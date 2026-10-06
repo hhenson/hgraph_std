@@ -1,0 +1,102 @@
+module hgraph.std part atomic_scalar_values_tests
+
+struct AtomicScalarBox<T> { value: T }
+
+test {
+    # Atomic spelling normalizes before generic pass_through specialization.
+    fn atomic_scalar_bool(value: atomic<bool>) -> bool => pass_through(value)
+    fn scalar_atomic_bool(value: bool) -> atomic<bool> => pass_through(value)
+    test atomic_bool_is_the_same_admitted_scalar {
+        assert eval(atomic_scalar_bool, [_, false, false, _, true, _]) == [_, false, false, _, true, _]
+        assert eval(scalar_atomic_bool, [false, _, true, true]) == [false, _, true, true]
+        assert eval(atomic_scalar_bool, [_, _, _]) == [_, _, _]
+        assert eval(scalar_atomic_bool, []) == []
+    }
+
+    fn atomic_scalar_i64(value: atomic<i64>) -> i64 => pass_through(value)
+    fn scalar_atomic_i64(value: i64) -> atomic<i64> => pass_through(value)
+    test atomic_i64_is_the_same_admitted_scalar {
+        assert eval(atomic_scalar_i64, [_, 0, 0, _, -7, _]) == [_, 0, 0, _, -7, _]
+        assert eval(scalar_atomic_i64, [0, _, -7, -7]) == [0, _, -7, -7]
+        assert eval(atomic_scalar_i64, [_, _, _]) == [_, _, _]
+        assert eval(scalar_atomic_i64, []) == []
+    }
+
+    fn atomic_scalar_f64(value: atomic<f64>) -> f64 => pass_through(value)
+    fn scalar_atomic_f64(value: f64) -> atomic<f64> => pass_through(value)
+    test atomic_f64_is_the_same_admitted_scalar {
+        assert eval(atomic_scalar_f64, [_, 0.0, 0.0, _, 1.5, _]) == [_, 0.0, 0.0, _, 1.5, _]
+        assert eval(scalar_atomic_f64, [0.0, _, 1.5, 1.5]) == [0.0, _, 1.5, 1.5]
+        assert eval(atomic_scalar_f64, [_, _, _]) == [_, _, _]
+        assert eval(scalar_atomic_f64, []) == []
+    }
+
+    fn atomic_scalar_str(value: atomic<str>) -> str => pass_through(value)
+    fn scalar_atomic_str(value: str) -> atomic<str> => pass_through(value)
+    test atomic_str_is_the_same_admitted_scalar {
+        assert eval(atomic_scalar_str, [_, "", "", _, "delta", _]) == [_, "", "", _, "delta", _]
+        assert eval(scalar_atomic_str, ["", _, "delta", "delta"]) == ["", _, "delta", "delta"]
+        assert eval(atomic_scalar_str, [_, _, _]) == [_, _, _]
+        assert eval(scalar_atomic_str, []) == []
+    }
+
+    fn atomic_scalar_date(value: atomic<date>) -> date => pass_through(value)
+    fn scalar_atomic_date(value: date) -> atomic<date> => pass_through(value)
+    test atomic_date_is_the_same_admitted_scalar {
+        assert eval(atomic_scalar_date, [_, @1970-01-01, @1970-01-01, _, @2024-02-29, _]) == [_, @1970-01-01, @1970-01-01, _, @2024-02-29, _]
+        assert eval(scalar_atomic_date, [@1970-01-01, _, @2024-02-29, @2024-02-29]) == [@1970-01-01, _, @2024-02-29, @2024-02-29]
+        assert eval(atomic_scalar_date, [_, _, _]) == [_, _, _]
+        assert eval(scalar_atomic_date, []) == []
+    }
+
+    fn atomic_scalar_time(value: atomic<time>) -> time => pass_through(value)
+    fn scalar_atomic_time(value: time) -> atomic<time> => pass_through(value)
+    test atomic_time_is_the_same_admitted_scalar {
+        assert eval(atomic_scalar_time, [_, @00:00, @00:00, _, @12:34:56, _]) == [_, @00:00, @00:00, _, @12:34:56, _]
+        assert eval(scalar_atomic_time, [@00:00, _, @12:34:56, @12:34:56]) == [@00:00, _, @12:34:56, @12:34:56]
+        assert eval(atomic_scalar_time, [_, _, _]) == [_, _, _]
+        assert eval(scalar_atomic_time, []) == []
+    }
+
+    fn atomic_scalar_datetime(value: atomic<datetime>) -> datetime => pass_through(value)
+    fn scalar_atomic_datetime(value: datetime) -> atomic<datetime> => pass_through(value)
+    test atomic_datetime_is_the_same_admitted_scalar {
+        assert eval(atomic_scalar_datetime, [_, @1970-01-01T00:00Z, @1970-01-01T00:00Z, _, @2024-02-29T12:34:56Z, _]) == [_, @1970-01-01T00:00Z, @1970-01-01T00:00Z, _, @2024-02-29T12:34:56Z, _]
+        assert eval(scalar_atomic_datetime, [@1970-01-01T00:00Z, _, @2024-02-29T12:34:56Z, @2024-02-29T12:34:56Z]) == [@1970-01-01T00:00Z, _, @2024-02-29T12:34:56Z, @2024-02-29T12:34:56Z]
+        assert eval(atomic_scalar_datetime, [_, _, _]) == [_, _, _]
+        assert eval(scalar_atomic_datetime, []) == []
+    }
+
+    fn atomic_scalar_duration(value: atomic<duration>) -> duration => pass_through(value)
+    fn scalar_atomic_duration(value: duration) -> atomic<duration> => pass_through(value)
+    test atomic_duration_is_the_same_admitted_scalar {
+        assert eval(atomic_scalar_duration, [_, 0us, 0us, _, 1s, _]) == [_, 0us, 0us, _, 1s, _]
+        assert eval(scalar_atomic_duration, [0us, _, 1s, 1s]) == [0us, _, 1s, 1s]
+        assert eval(atomic_scalar_duration, [_, _, _]) == [_, _, _]
+        assert eval(scalar_atomic_duration, []) == []
+    }
+
+    fn atomic_scalar_fixed(value: list<atomic<i64>, 2>) -> list<i64, 2> => pass_through(value)
+    fn atomic_scalar_box(value: AtomicScalarBox<atomic<i64>>) -> AtomicScalarBox<i64> => pass_through(value)
+
+    test atomic_scalar_normalization_is_recursive {
+        assert eval(atomic_scalar_fixed, [delta<list<i64, 2>>(items: [1: 0]), _, delta<list<atomic<i64>, 2>>(items: [0: 7])]) == [delta<list<atomic<i64>, 2>>(items: [1: 0]), _, delta<list<i64, 2>>(items: [0: 7])]
+        assert eval(atomic_scalar_box, [delta<AtomicScalarBox<i64>>(value: 0), delta<AtomicScalarBox<atomic<i64>>>(value: 7)]) == [delta<AtomicScalarBox<atomic<i64>>>(value: 0), delta<AtomicScalarBox<i64>>(value: 7)]
+    }
+
+    const fn atomic_scalar_timed_values() -> list<TimedValue<i64>> {
+        var values: list<TimedValue<atomic<i64>>> = []
+        let scalar: delta<atomic<i64>> = 0
+        push(values, TimedValue<atomic<i64>>(time: @1970-01-01T00:00:00.000001Z, value: scalar))
+        push(values, TimedValue(time: @1970-01-01T00:00:00.000003Z, value: 0))
+        return values
+    }
+    fn atomic_scalar_replay_context(tick: i64) { when { } }
+    fn atomic_scalar_replay(tick: i64) -> atomic<i64> {
+        atomic_scalar_replay_context(tick)
+        replay(atomic_scalar_timed_values())
+    }
+    test atomic_scalar_timed_value_has_one_originating_specialization {
+        assert eval(atomic_scalar_replay, [1, 1, 1, 1]) == [0, _, 0, _]
+    }
+}

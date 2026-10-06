@@ -1,0 +1,93 @@
+module hgraph.std part temporal_retention_values_tests
+
+test {
+    fn temporal_replay_context(tick: i64) { when { } }
+    fn temporal_civil_replay(tick: i64, const samples: list<TimedValue<civil_datetime>>) -> civil_datetime {
+        temporal_replay_context(tick)
+        replay(samples)
+    }
+    fn temporal_zone_replay(tick: i64, const samples: list<TimedValue<timezone>>) -> timezone {
+        temporal_replay_context(tick)
+        replay(samples)
+    }
+    fn temporal_zoned_replay(tick: i64, const samples: list<TimedValue<zoned_datetime>>) -> zoned_datetime {
+        temporal_replay_context(tick)
+        replay(samples)
+    }
+
+    # Retained civil payloads keep microseconds after both source and sample change.
+    test timed_civil_values_retain_independent_payloads_before_replay {
+        var source: civil_datetime = @2026-01-15T12:30:00.123456
+        var sample: TimedValue<civil_datetime> = TimedValue<civil_datetime>(time: @1970-01-01T00:00:00.000001Z, value: source)
+        var samples: list<TimedValue<civil_datetime>> = []
+        push(samples, sample)
+        sample.time = @1970-01-01T00:00:00.000003Z
+        push(samples, sample)
+        source = @2026-01-15T12:30:00.123457
+        sample.value = source
+        sample.time = @1970-01-01T00:00:00.000004Z
+        push(samples, sample)
+        sample.value = @2026-01-16T00:00
+        assert eval(temporal_civil_replay, tick: [1, 1, 1, 1, 1], samples: samples) == [
+            @2026-01-15T12:30:00.123456, _, @2026-01-15T12:30:00.123456,
+            @2026-01-15T12:30:00.123457, _
+        ]
+    }
+
+    # Typed empty lists fix replay's leaf type and produce no publications.
+    test empty_timed_temporal_lists_preserve_only_the_input_horizon {
+        let civil: list<TimedValue<civil_datetime>> = []
+        let zone: list<TimedValue<timezone>> = []
+        let zoned: list<TimedValue<zoned_datetime>> = []
+        assert eval(temporal_civil_replay, tick: [1, 1, 1], samples: civil) == [_, _, _]
+        assert eval(temporal_zone_replay, tick: [1, 1, 1], samples: zone) == [_, _, _]
+        assert eval(temporal_zoned_replay, tick: [1, 1, 1], samples: zoned) == [_, _, _]
+        assert eval(temporal_civil_replay, tick: [], samples: civil) == []
+        assert eval(temporal_zone_replay, tick: [], samples: zone) == []
+        assert eval(temporal_zoned_replay, tick: [], samples: zoned) == []
+    }
+
+    test timed_zone_values_retain_owning_names_before_replay {
+        var source: timezone = @[US/Eastern]
+        var sample: TimedValue<timezone> = TimedValue<timezone>(time: @1970-01-01T00:00:00.000001Z, value: source)
+        var samples: list<TimedValue<timezone>> = []
+        push(samples, sample)
+        sample.time = @1970-01-01T00:00:00.000003Z
+        push(samples, sample)
+        source = @[America/New_York]
+        sample.value = source
+        assert eval(temporal_zone_replay, tick: [1, 1, 1, 1], samples: samples) == [@[US/Eastern], _, @[US/Eastern], _]
+        assert eval(temporal_zone_replay, tick: [1, 1, 1, 1], samples: samples) == [@[US/Eastern], _, @[US/Eastern], _]
+    }
+
+    test timed_zoned_values_keep_instant_zone_and_offset {
+        var source: zoned_datetime = @2026-01-15T12:30+00:00[Etc/UTC]
+        let sample: TimedValue<zoned_datetime> = TimedValue<zoned_datetime>(time: @1970-01-01T00:00:00.000002Z, value: source)
+        var samples: list<TimedValue<zoned_datetime>> = []
+        push(samples, sample)
+        source = @2026-01-15T13:30+01:00[Europe/Paris]
+        assert sample.value != source
+        assert eval(temporal_zoned_replay, tick: [1, 1, 1, 1], samples: samples) == [_, @2026-01-15T12:30+00:00[Etc/UTC], _, _]
+    }
+
+    fn temporal_global_copy<T>(value: T) -> T {
+        inject global_state
+        when {
+            set(global_state, "temporal_saved", delta_value(value))
+            let retained: delta<T> = get(global_state, "temporal_saved")
+            return retained
+        }
+    }
+    fn temporal_global_civil(value: civil_datetime) -> civil_datetime => temporal_global_copy(value)
+    fn temporal_global_zone(value: timezone) -> timezone => temporal_global_copy(value)
+    fn temporal_global_zoned(value: zoned_datetime) -> zoned_datetime => temporal_global_copy(value)
+
+    test temporal_global_state_and_recordings_keep_exact_scalar_identity {
+        let civil: civil_datetime = @2026-01-15T12:30:00.123456
+        let zone: timezone = @[US/Eastern]
+        let zoned: zoned_datetime = @2026-01-15T12:30+00:00[Etc/UTC]
+        assert eval(temporal_global_civil, [civil, _, civil]) == [civil, _, civil]
+        assert eval(temporal_global_zone, [zone, @[America/New_York], _, zone]) == [zone, @[America/New_York], _, zone]
+        assert eval(temporal_global_zoned, [zoned, _, zoned]) == [zoned, _, zoned]
+    }
+}

@@ -1,0 +1,167 @@
+module hgraph.std part atomic_eval_values_tests
+
+struct AtomicRequiredPair {
+    amount: i64
+    label: str
+}
+
+struct AtomicDefaultQuote {
+    bid: i64
+    ask: i64 = 20
+    label: str = "default"
+}
+
+struct AtomicSnapshotBook {
+    quote: AtomicDefaultQuote
+    levels: list<tuple<i64, str>>
+    active: bool = true
+}
+
+struct AtomicChildBook {
+    snapshot: atomic<AtomicDefaultQuote>
+    sequence: i64
+}
+
+struct AtomicProjectionBox<T> { value: T }
+
+test {
+    const fn atomic_full_list() -> list<i64> { return [1, 2] }
+    const fn atomic_other_list() -> list<i64> { return [7] }
+    const fn atomic_empty_list() -> list<i64> { return [] }
+    const fn atomic_fixed_list() -> list<i64, 2> { return [1, 2] }
+    const fn atomic_other_fixed_list() -> list<i64, 2> { return [7, 0] }
+    const fn atomic_zero_list() -> list<i64, 0> { return [] }
+    const fn atomic_nested_list() -> list<list<i64>> {
+        var values: list<list<i64>> = []
+        push(values, atomic_full_list())
+        push(values, atomic_empty_list())
+        return values
+    }
+    const fn atomic_other_nested_list() -> list<list<i64>> {
+        var values: list<list<i64>> = []
+        push(values, atomic_other_list())
+        return values
+    }
+    const fn atomic_levels() -> list<tuple<i64, str>> {
+        var values: list<tuple<i64, str>> = []
+        push(values, (1, ""))
+        push(values, (2, "second"))
+        return values
+    }
+    const fn atomic_no_levels() -> list<tuple<i64, str>> { return [] }
+
+    fn atomic_list_value(value: atomic<list<i64>>) -> atomic<list<i64>> => pass_through(value)
+    fn atomic_fixed_value(value: atomic<list<i64, 2>>) -> atomic<list<i64, 2>> => pass_through(value)
+    fn atomic_zero_value(value: atomic<list<i64, 0>>) -> atomic<list<i64, 0>> => pass_through(value)
+    fn atomic_nested_value(value: atomic<list<list<i64>>>) -> atomic<list<list<i64>>> => pass_through(value)
+    fn atomic_tuple_value(value: atomic<tuple<i64, str>>) -> atomic<tuple<i64, str>> => pass_through(value)
+    fn atomic_all_scalar_tuple(value: atomic<tuple<bool, i64, f64, str, date, time, datetime, duration>>) -> atomic<tuple<bool, i64, f64, str, date, time, datetime, duration>> => pass_through(value)
+    fn atomic_required_value(value: atomic<AtomicRequiredPair>) -> atomic<AtomicRequiredPair> => pass_through(value)
+    fn atomic_default_value(value: atomic<AtomicDefaultQuote>) -> atomic<AtomicDefaultQuote> => pass_through(value)
+    fn atomic_book_value(value: atomic<AtomicSnapshotBook>) -> atomic<AtomicSnapshotBook> => pass_through(value)
+    fn atomic_child_book_value(value: atomic<AtomicChildBook>) -> atomic<AtomicChildBook> => pass_through(value)
+
+    const fn atomic_ordinary_child_book() -> AtomicChildBook {
+        var value: AtomicChildBook = AtomicChildBook(snapshot: AtomicDefaultQuote(bid: 1), sequence: 2)
+        value.snapshot.bid = 3
+        return value
+    }
+
+    const fn atomic_inferred_child_book() -> AtomicChildBook {
+        let inferred = AtomicProjectionBox(value: atomic_ordinary_child_book())
+        let exact: AtomicProjectionBox<AtomicChildBook> = inferred
+        return exact.value
+    }
+
+    # The ordinary payload erases field atomic markers; its temporal schema keeps them.
+    test atomic_snapshot_projects_nested_atomic_fields_to_ordinary_values {
+        assert eval(atomic_child_book_value, [atomic_ordinary_child_book(), _, AtomicChildBook(snapshot: AtomicDefaultQuote(bid: 0), sequence: 0)]) == [AtomicChildBook(snapshot: AtomicDefaultQuote(bid: 3), sequence: 2), _, AtomicChildBook(snapshot: AtomicDefaultQuote(bid: 0), sequence: 0)]
+        assert eval(atomic_child_book_value, [atomic_inferred_child_book()]) == [atomic_ordinary_child_book()]
+    }
+
+    test atomic_lists_publish_complete_empty_and_equal_snapshots {
+        assert eval(atomic_list_value, [_, atomic_full_list(), atomic_empty_list(), _, atomic_empty_list(), atomic_other_list(), _]) == [_, atomic_full_list(), atomic_empty_list(), _, atomic_empty_list(), atomic_other_list(), _]
+        assert eval(atomic_fixed_value, [atomic_fixed_list(), atomic_other_fixed_list(), atomic_other_fixed_list(), _]) == [atomic_fixed_list(), atomic_other_fixed_list(), atomic_other_fixed_list(), _]
+        assert eval(atomic_zero_value, [atomic_zero_list(), _, atomic_zero_list(), _]) == [atomic_zero_list(), _, atomic_zero_list(), _]
+    }
+
+    test atomic_nested_lists_replace_the_whole_snapshot {
+        assert eval(atomic_nested_value, [atomic_nested_list(), _, atomic_other_nested_list(), atomic_other_nested_list(), atomic_nested_list()]) == [atomic_nested_list(), _, atomic_other_nested_list(), atomic_other_nested_list(), atomic_nested_list()]
+    }
+
+    test atomic_tuples_and_required_structs_are_complete_values {
+        assert eval(atomic_tuple_value, [(1, "a"), (2, "b"), _, (2, "b"), (0, "")]) == [(1, "a"), (2, "b"), _, (2, "b"), (0, "")]
+        assert eval(atomic_required_value, [AtomicRequiredPair(amount: 1, label: "first"), AtomicRequiredPair(amount: 0, label: ""), _, AtomicRequiredPair(amount: 0, label: "")]) == [AtomicRequiredPair(amount: 1, label: "first"), AtomicRequiredPair(amount: 0, label: ""), _, AtomicRequiredPair(amount: 0, label: "")]
+    }
+
+    test atomic_tuple_retains_all_eight_scalar_types {
+        assert eval(atomic_all_scalar_tuple, [
+            _,
+            (false, 0, 0.0, "", @1970-01-01, @00:00, @1970-01-01T00:00Z, 0us),
+            (true, -7, 1.5, "changed", @2024-02-29, @12:34:56, @2024-02-29T12:34:56Z, 1s),
+            _,
+            (true, -7, 1.5, "changed", @2024-02-29, @12:34:56, @2024-02-29T12:34:56Z, 1s),
+            _
+        ]) == [
+            _,
+            (false, 0, 0.0, "", @1970-01-01, @00:00, @1970-01-01T00:00Z, 0us),
+            (true, -7, 1.5, "changed", @2024-02-29, @12:34:56, @2024-02-29T12:34:56Z, 1s),
+            _,
+            (true, -7, 1.5, "changed", @2024-02-29, @12:34:56, @2024-02-29T12:34:56Z, 1s),
+            _
+        ]
+    }
+
+    # Ordinary defaults are reconstructed; earlier ask/label values do not merge.
+    test atomic_defaults_replace_previous_field_values {
+        assert eval(atomic_default_value, [AtomicDefaultQuote(bid: 1, ask: 99, label: "old"), AtomicDefaultQuote(bid: 2), _, AtomicDefaultQuote(bid: 2)]) == [AtomicDefaultQuote(bid: 1, ask: 99, label: "old"), AtomicDefaultQuote(bid: 2, ask: 20, label: "default"), _, AtomicDefaultQuote(bid: 2, ask: 20, label: "default")]
+    }
+
+    test atomic_structs_recursively_replace_lists_tuples_and_defaults {
+        assert eval(atomic_book_value, [AtomicSnapshotBook(quote: AtomicDefaultQuote(bid: 1, ask: 99), levels: atomic_levels(), active: false), _, AtomicSnapshotBook(quote: AtomicDefaultQuote(bid: 2), levels: atomic_no_levels())]) == [AtomicSnapshotBook(quote: AtomicDefaultQuote(bid: 1, ask: 99), levels: atomic_levels(), active: false), _, AtomicSnapshotBook(quote: AtomicDefaultQuote(bid: 2, ask: 20, label: "default"), levels: atomic_no_levels(), active: true)]
+    }
+
+    test atomic_empty_and_all_silent_inputs_keep_the_dense_horizon {
+        assert eval(atomic_list_value, []) == []
+        assert eval(atomic_list_value, [_, _, _, _]) == [_, _, _, _]
+        assert eval(atomic_fixed_value, [_, _]) == [_, _]
+        assert eval(atomic_zero_value, []) == []
+        assert eval(atomic_nested_value, [_, _, _]) == [_, _, _]
+        assert eval(atomic_tuple_value, []) == []
+        assert eval(atomic_required_value, [_, _]) == [_, _]
+        assert eval(atomic_default_value, []) == []
+        assert eval(atomic_book_value, [_, _, _]) == [_, _, _]
+    }
+
+    fn atomic_horizon_context(tick: i64) { when { } }
+    fn atomic_longer_horizon(value: atomic<list<i64>>, tick: i64) -> atomic<list<i64>> {
+        atomic_horizon_context(tick)
+        pass_through(value)
+    }
+    test atomic_inputs_keep_independent_lengths_and_fresh_recordings {
+        assert eval(atomic_longer_horizon, value: [atomic_empty_list()], tick: [_, _, _, _]) == [atomic_empty_list(), _, _, _]
+        assert eval(atomic_longer_horizon, value: [], tick: [_, _, _]) == [_, _, _]
+        assert eval(atomic_list_value, [atomic_full_list()]) == [atomic_full_list()]
+        assert eval(atomic_list_value, []) == []
+        assert eval(atomic_list_value, [_, atomic_empty_list(), _]) == [_, atomic_empty_list(), _]
+    }
+
+    fn atomic_map_children(value: map<i64, atomic<list<i64>>>) -> map<i64, atomic<list<i64>>> => pass_through(value)
+    fn atomic_fixed_children(value: list<atomic<list<i64>>, 2>) -> list<atomic<list<i64>>, 2> => pass_through(value)
+    fn atomic_tuple_children(value: tuple<atomic<list<i64>>, i64>) -> tuple<atomic<list<i64>>, i64> => pass_through(value)
+    fn atomic_nominal_children(value: AtomicChildBook) -> AtomicChildBook => pass_through(value)
+
+    # A nonempty outer patch can carry a present empty atomic child.
+    test atomic_map_children_publish_empty_replacement_remove_and_reinsert {
+        assert eval(atomic_map_children, [delta<map<i64, atomic<list<i64>>>>(upsert: [4: atomic_full_list()]), delta<map<i64, atomic<list<i64>>>>(upsert: [4: atomic_empty_list()]), _, delta<map<i64, atomic<list<i64>>>>(upsert: [4: atomic_empty_list()]), delta<map<i64, atomic<list<i64>>>>(remove: [4]), delta<map<i64, atomic<list<i64>>>>(upsert: [4: atomic_other_list()])]) == [delta<map<i64, atomic<list<i64>>>>(upsert: [4: atomic_full_list()]), delta<map<i64, atomic<list<i64>>>>(upsert: [4: atomic_empty_list()]), _, delta<map<i64, atomic<list<i64>>>>(upsert: [4: atomic_empty_list()]), delta<map<i64, atomic<list<i64>>>>(remove: [4]), delta<map<i64, atomic<list<i64>>>>(upsert: [4: atomic_other_list()])]
+    }
+
+    test atomic_children_keep_outer_list_and_tuple_patches_sparse {
+        assert eval(atomic_fixed_children, [delta<list<atomic<list<i64>>, 2>>(items: [0: atomic_full_list(), 1: atomic_other_list()]), delta<list<atomic<list<i64>>, 2>>(items: [0: atomic_empty_list()]), _]) == [delta<list<atomic<list<i64>>, 2>>(items: [1: atomic_other_list(), 0: atomic_full_list()]), delta<list<atomic<list<i64>>, 2>>(items: [0: atomic_empty_list()]), _]
+        assert eval(atomic_tuple_children, [(atomic_full_list(), 9), (_, 0), (atomic_empty_list(), _), _]) == [(atomic_full_list(), 9), (_, 0), (atomic_empty_list(), _), _]
+    }
+
+    test atomic_nominal_child_applies_defaults_inside_a_sparse_outer_patch {
+        assert eval(atomic_nominal_children, [delta<AtomicChildBook>(snapshot: AtomicDefaultQuote(bid: 1, ask: 99), sequence: 7), delta<AtomicChildBook>(snapshot: AtomicDefaultQuote(bid: 2)), delta<AtomicChildBook>(sequence: 0)]) == [delta<AtomicChildBook>(snapshot: AtomicDefaultQuote(bid: 1, ask: 99), sequence: 7), delta<AtomicChildBook>(snapshot: AtomicDefaultQuote(bid: 2, ask: 20, label: "default")), delta<AtomicChildBook>(sequence: 0)]
+    }
+}

@@ -1,0 +1,85 @@
+module hgraph.std part signal_observation_values_tests
+
+struct SignalObservedFields { amount: i64
+    label: str }
+
+test {
+    # Signal erases payload access; count publications without inspecting values.
+    fn signal_publications(value: signal) -> i64 {
+        state count: i64 = 0
+        when valid(value) && modified(value) {
+            count += 1
+            return count
+        }
+    }
+    fn signal_count<T>(value: T) -> i64 => signal_publications(value)
+    fn signal_bool(value: bool) -> i64 => signal_count(value)
+    fn signal_integer(value: i64) -> i64 => signal_count(value)
+    fn signal_float(value: f64) -> i64 => signal_count(value)
+    fn signal_string(value: str) -> i64 => signal_count(value)
+    fn signal_date(value: date) -> i64 => signal_count(value)
+    fn signal_time(value: time) -> i64 => signal_count(value)
+    fn signal_datetime(value: datetime) -> i64 => signal_count(value)
+    fn signal_duration(value: duration) -> i64 => signal_count(value)
+    fn signal_civil(value: civil_datetime) -> i64 => signal_count(value)
+    fn signal_timezone(value: timezone) -> i64 => signal_count(value)
+    fn signal_zoned_datetime(value: zoned_datetime) -> i64 => signal_count(value)
+    fn signal_zoned_time(value: zoned_time) -> i64 => signal_count(value)
+
+    test signal_observes_scalar_publications_including_equal_values {
+        assert eval(signal_bool, [_, false, false, _, true, _]) == [_, 1, 2, _, 3, _]
+        assert eval(signal_integer, [_, 0, 0, _, -7, _]) == [_, 1, 2, _, 3, _]
+        assert eval(signal_float, [_, 0.0, 0.0, _, 1.5, _]) == [_, 1, 2, _, 3, _]
+        assert eval(signal_string, [_, "", "", _, "x", _]) == [_, 1, 2, _, 3, _]
+        assert eval(signal_date, [_, @1970-01-01, @1970-01-01, _, @2024-02-29, _]) == [_, 1, 2, _, 3, _]
+        assert eval(signal_time, [_, @00:00, @00:00, _, @23:59:59.999999, _]) == [_, 1, 2, _, 3, _]
+        assert eval(signal_datetime, [_, @1970-01-01T00:00Z, @1970-01-01T00:00Z, _, @2024-02-29T00:00Z, _]) == [_, 1, 2, _, 3, _]
+        assert eval(signal_duration, [_, 0us, 0us, _, 1s, _]) == [_, 1, 2, _, 3, _]
+        assert eval(signal_civil, [_, @1970-01-01T00:00, @1970-01-01T00:00, _, @2024-02-29T00:00, _]) == [_, 1, 2, _, 3, _]
+        assert eval(signal_timezone, [_, @[US/Eastern], @[US/Eastern], _, @[America/New_York], _]) == [_, 1, 2, _, 3, _]
+        assert eval(signal_zoned_datetime, [_, @2026-01-15T12:30+00:00[Etc/UTC], @2026-01-15T12:30+00:00[Etc/UTC], _, @2026-01-15T13:30+01:00[Europe/Paris], _]) == [_, 1, 2, _, 3, _]
+        assert eval(signal_zoned_time, [_, @09:30[US/Eastern], @09:30[US/Eastern], _, @09:30[America/New_York], _]) == [_, 1, 2, _, 3, _]
+    }
+
+    fn signal_set(value: set<i64>) -> i64 => signal_count(value)
+    fn signal_fixed(value: list<i64, 2>) -> i64 => signal_count(value)
+    fn signal_tuple(value: tuple<i64, str>) -> i64 => signal_count(value)
+    fn signal_fields(value: SignalObservedFields) -> i64 => signal_count(value)
+    fn signal_map(value: map<i64, i64>) -> i64 => signal_count(value)
+    fn signal_atomic(value: atomic<SignalObservedFields>) -> i64 => signal_count(value)
+    fn signal_atomic_list(value: atomic<list<i64>>) -> i64 => signal_count(value)
+
+    test signal_observes_structural_publications_without_payload_access {
+        assert eval(signal_set, [delta<set<i64>>(added: [1]), _, delta<set<i64>>(removed: [1]), _]) == [1, _, 2, _]
+        assert eval(signal_fixed, [delta<list<i64, 2>>(items: [1: 0]), _, delta<list<i64, 2>>(items: [1: 0]), _]) == [1, _, 2, _]
+        assert eval(signal_tuple, [(0, _), _, (_, ""), _]) == [1, _, 2, _]
+        assert eval(signal_fields, [delta<SignalObservedFields>(amount: 0), _, delta<SignalObservedFields>(label: ""), _]) == [1, _, 2, _]
+        assert eval(signal_map, [delta<map<i64, i64>>(upsert: [1: 0]), _, delta<map<i64, i64>>(remove: [1]), _]) == [1, _, 2, _]
+        let value: SignalObservedFields = SignalObservedFields(amount: 0, label: "")
+        assert eval(signal_atomic, [value, _, value, _]) == [1, _, 2, _]
+        let empty: list<i64> = []
+        assert eval(signal_atomic_list, [empty, _, empty, _]) == [1, _, 2, _]
+        assert eval(signal_fixed, []) == []
+        assert eval(signal_fields, [_, _, _]) == [_, _, _]
+    }
+
+    fn signal_is_valid(value: signal, trigger: i64) -> bool {
+        when valid(trigger) && modified(trigger) { return valid(value) }
+    }
+    fn signal_is_modified(value: signal, trigger: i64) -> bool {
+        when valid(trigger) && modified(trigger) { return modified(value) }
+    }
+    fn signal_modified_time(value: signal, trigger: i64) -> datetime {
+        when valid(value, trigger) && modified(trigger) { return last_modified(value) }
+    }
+    fn signal_scalar_validity(value: i64, trigger: i64) -> bool => signal_is_valid(value, trigger)
+    fn signal_scalar_modification(value: i64, trigger: i64) -> bool => signal_is_modified(value, trigger)
+    fn signal_scalar_time(value: i64, trigger: i64) -> datetime => signal_modified_time(value, trigger)
+
+    # A separate trigger observes silence: validity and last_modified are retained.
+    test signal_metadata_distinguishes_silence_from_a_new_publication {
+        assert eval(signal_scalar_validity, value: [_, 0, _, 0, _], trigger: [1, 1, 1, 1, 1]) == [false, true, true, true, true]
+        assert eval(signal_scalar_modification, value: [_, 0, _, 0, _], trigger: [1, 1, 1, 1, 1]) == [false, true, false, true, false]
+        assert eval(signal_scalar_time, value: [_, 0, _, 0, _], trigger: [1, 1, 1, 1, 1]) == [_, @1970-01-01T00:00:00.000002Z, @1970-01-01T00:00:00.000002Z, @1970-01-01T00:00:00.000004Z, @1970-01-01T00:00:00.000004Z]
+    }
+}
