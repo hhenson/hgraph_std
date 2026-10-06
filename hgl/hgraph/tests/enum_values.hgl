@@ -1,0 +1,110 @@
+module hgraph.std part enum_values_tests
+
+enum PublicationMode {
+    low = -9223372036854775808,
+    first = -7,
+    second = 11,
+    high = 9223372036854775807
+}
+
+struct EnumSnapshot {
+    mode: PublicationMode
+    label: str
+}
+
+struct EnumDefault {
+    mode: PublicationMode = PublicationMode::first
+}
+
+test {
+    fn enum_forward(value: PublicationMode) -> PublicationMode => pass_through(value)
+    fn enum_atomic(value: atomic<PublicationMode>) -> PublicationMode => pass_through(value)
+    fn enum_fixed(value: list<PublicationMode, 2>) -> list<PublicationMode, 2> => pass_through(value)
+    fn enum_tuple(value: tuple<PublicationMode, i64>) -> tuple<PublicationMode, i64> => pass_through(value)
+    fn enum_fields(value: EnumSnapshot) -> EnumSnapshot => pass_through(value)
+    fn enum_map(value: map<i64, PublicationMode>) -> map<i64, PublicationMode> => pass_through(value)
+    fn enum_snapshot(value: atomic<EnumSnapshot>) -> atomic<EnumSnapshot> => pass_through(value)
+    fn enum_list(value: atomic<list<PublicationMode>>) -> atomic<list<PublicationMode>> => pass_through(value)
+
+    # Assigned numbers are values, not declaration positions or interchangeable integers.
+    test enum_publications_preserve_members_equal_ticks_and_silence {
+        assert eval(enum_forward, [_, PublicationMode::low, PublicationMode::low, _, PublicationMode::first, PublicationMode::second, PublicationMode::high, _]) == [
+            _, PublicationMode::low, PublicationMode::low, _, PublicationMode::first, PublicationMode::second, PublicationMode::high, _
+        ]
+        assert eval(enum_forward, [_, _, _]) == [_, _, _]
+        assert eval(enum_forward, []) == []
+        let member: delta<atomic<PublicationMode>> = PublicationMode::first
+        assert eval(enum_atomic, [member, _, member]) == [member, _, member]
+    }
+
+    test enum_children_preserve_sparse_list_tuple_and_field_deltas {
+        assert eval(enum_fixed, [delta<list<PublicationMode, 2>>(items: [1: PublicationMode::first]), _, delta<list<PublicationMode, 2>>(items: [0: PublicationMode::high, 1: PublicationMode::first])]) == [
+            delta<list<PublicationMode, 2>>(items: [1: PublicationMode::first]), _, delta<list<PublicationMode, 2>>(items: [1: PublicationMode::first, 0: PublicationMode::high])
+        ]
+        assert eval(enum_tuple, [(PublicationMode::first, _), (_, 0), (PublicationMode::first, _), _]) == [(PublicationMode::first, _), (_, 0), (PublicationMode::first, _), _]
+        assert eval(enum_fields, [delta<EnumSnapshot>(mode: PublicationMode::first), delta<EnumSnapshot>(label: ""), _, delta<EnumSnapshot>(mode: PublicationMode::first)]) == [
+            delta<EnumSnapshot>(mode: PublicationMode::first), delta<EnumSnapshot>(label: ""), _, delta<EnumSnapshot>(mode: PublicationMode::first)
+        ]
+    }
+
+    test enum_map_children_update_remove_and_recreate {
+        assert eval(enum_map, [delta<map<i64, PublicationMode>>(upsert: [1: PublicationMode::first]), delta<map<i64, PublicationMode>>(upsert: [1: PublicationMode::first]), _, delta<map<i64, PublicationMode>>(remove: [1]), delta<map<i64, PublicationMode>>(upsert: [1: PublicationMode::second])]) == [
+            delta<map<i64, PublicationMode>>(upsert: [1: PublicationMode::first]), delta<map<i64, PublicationMode>>(upsert: [1: PublicationMode::first]), _, delta<map<i64, PublicationMode>>(remove: [1]), delta<map<i64, PublicationMode>>(upsert: [1: PublicationMode::second])
+        ]
+    }
+
+    test enum_atomic_values_retain_complete_snapshots {
+        var value: EnumSnapshot = EnumSnapshot(mode: PublicationMode::first, label: "first")
+        let retained: EnumSnapshot = value
+        value.mode = PublicationMode::second
+        value.label = "second"
+        assert retained.mode == PublicationMode::first
+        assert eval(enum_snapshot, [retained, retained, _, value]) == [retained, retained, _, value]
+        var values: list<PublicationMode> = []
+        push(values, PublicationMode::first)
+        let first: list<PublicationMode> = values
+        push(values, PublicationMode::second)
+        let empty: list<PublicationMode> = []
+        assert len(first) == 1
+        assert eval(enum_list, [first, values, empty, _, empty]) == [first, values, empty, _, empty]
+    }
+
+    fn enum_default_snapshot(value: atomic<EnumDefault>) -> atomic<EnumDefault> => pass_through(value)
+    test enum_defaults_preserve_declared_member_identity {
+        let original: EnumDefault = EnumDefault()
+        let replacement: EnumDefault = EnumDefault(mode: PublicationMode::second)
+        assert original.mode == PublicationMode::first
+        assert eval(enum_default_snapshot, [original, replacement, _, original]) == [original, replacement, _, original]
+    }
+
+    fn enum_replay_context(tick: i64) { when { } }
+    fn enum_replayed(tick: i64, const samples: list<TimedValue<PublicationMode>>) -> PublicationMode {
+        enum_replay_context(tick)
+        replay(samples)
+    }
+    test enum_timed_replay_retains_members_across_mutation_and_runs {
+        var sample: TimedValue<PublicationMode> = TimedValue<PublicationMode>(time: @1970-01-01T00:00:00.000001Z, value: PublicationMode::first)
+        var samples: list<TimedValue<PublicationMode>> = []
+        push(samples, sample)
+        sample.time = @1970-01-01T00:00:00.000003Z
+        push(samples, sample)
+        sample.value = PublicationMode::second
+        assert eval(enum_replayed, tick: [1, 1, 1, 1], samples: samples) == [PublicationMode::first, _, PublicationMode::first, _]
+        assert eval(enum_replayed, tick: [1, 1, 1, 1], samples: samples) == [PublicationMode::first, _, PublicationMode::first, _]
+        let empty: list<TimedValue<PublicationMode>> = []
+        assert eval(enum_replayed, tick: [1, 1], samples: empty) == [_, _]
+        assert eval(enum_replayed, tick: [], samples: empty) == []
+    }
+
+    fn enum_global_copy(value: PublicationMode) -> PublicationMode {
+        inject global_state
+        when {
+            set(global_state, "enum.saved", delta_value(value))
+            let retained: delta<PublicationMode> = get(global_state, "enum.saved")
+            return retained
+        }
+    }
+    test enum_global_state_retains_members {
+        assert eval(enum_global_copy, [PublicationMode::first, _, PublicationMode::second, PublicationMode::first]) == [PublicationMode::first, _, PublicationMode::second, PublicationMode::first]
+    }
+}

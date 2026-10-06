@@ -1,0 +1,122 @@
+module hgraph.std part atomic_set_map_values_tests
+
+struct AtomicCollections {
+    tags: set<str>
+    counts: map<str, i64>
+}
+
+test {
+    fn complete_set(value: atomic<set<str>>) -> atomic<set<str>> => pass_through(value)
+    fn complete_map(value: atomic<map<str, i64>>) -> atomic<map<str, i64>> => pass_through(value)
+    fn complete_nested_map(value: atomic<map<str, list<i64>>>) -> atomic<map<str, list<i64>>> => pass_through(value)
+    fn complete_collections(value: atomic<AtomicCollections>) -> atomic<AtomicCollections> => pass_through(value)
+    fn sparse_complete_sets(value: list<atomic<set<str>>, 2>) -> list<atomic<set<str>>, 2> => pass_through(value)
+    fn sparse_complete_maps(value: map<i64, atomic<map<str, i64>>>) -> map<i64, atomic<map<str, i64>>> => pass_through(value)
+
+    # These are whole snapshots: omitted members and keys are removed by replacement.
+    test atomic_sets_replace_members_and_retain_present_empty_ticks {
+        let both: set<str> = set<str>(items: ["alpha", "beta"])
+        let one: set<str> = set<str>(items: ["beta"])
+        let empty: set<str> = set<str>(items: [])
+        assert eval(complete_set, [both, both, _, one, empty, empty, _]) == [
+            set<str>(items: ["beta", "alpha"]), both, _, one, empty, empty, _
+        ]
+        assert eval(complete_set, []) == []
+        assert eval(complete_set, [_, _, _]) == [_, _, _]
+    }
+
+    test atomic_maps_replace_complete_values_instead_of_merging_keys {
+        let both: map<str, i64> = map<str, i64>(items: ["alpha": 1, "beta": 2])
+        let replacement: map<str, i64> = map<str, i64>(items: ["alpha": 3])
+        let empty: map<str, i64> = map<str, i64>(items: [])
+        assert eval(complete_map, [both, both, replacement, empty, _, empty]) == [
+            map<str, i64>(items: ["beta": 2, "alpha": 1]), both, replacement, empty, _, empty
+        ]
+        assert eval(complete_map, []) == []
+        assert eval(complete_map, [_, _, _]) == [_, _, _]
+    }
+
+    test ordinary_container_construction_retains_nested_source_values {
+        var row: list<i64> = []
+        push(row, 1)
+        let first: map<str, list<i64>> = map<str, list<i64>>(items: ["row": row])
+        push(row, 2)
+        let second: map<str, list<i64>> = map<str, list<i64>>(items: ["row": row])
+        push(row, 3)
+        assert eval(complete_nested_map, [first, second, _, first]) == [
+            map<str, list<i64>>(items: ["row": [1]]),
+            map<str, list<i64>>(items: ["row": [1, 2]]), _,
+            map<str, list<i64>>(items: ["row": [1]])
+        ]
+    }
+
+    const fn ordinary_dynamic_map(key: str, item: i64) -> map<str, list<i64>> {
+        var values: list<i64> = []
+        push(values, item)
+        return map<str, list<i64>>(items: [key: values])
+    }
+    const fn ordinary_dynamic_set(first: str, second: str) -> set<str> {
+        return set<str>(items: [first, second])
+    }
+    test complete_container_constructors_accept_ordinary_expressions {
+        assert eval(complete_nested_map, [ordinary_dynamic_map("row", 7), ordinary_dynamic_map("other", 9)]) == [
+            map<str, list<i64>>(items: ["row": [7]]), map<str, list<i64>>(items: ["other": [9]])
+        ]
+        assert eval(complete_set, [ordinary_dynamic_set("alpha", "beta")]) == [set<str>(items: ["beta", "alpha"])]
+    }
+
+    test complete_sets_and_maps_nest_inside_struct_snapshots {
+        var source: AtomicCollections = AtomicCollections(
+            tags: set<str>(items: ["alpha"]), counts: map<str, i64>(items: ["alpha": 1])
+        )
+        let retained: AtomicCollections = source
+        source.tags = set<str>(items: [])
+        source.counts = map<str, i64>(items: [])
+        assert eval(complete_collections, [retained, _, source, retained]) == [
+            AtomicCollections(tags: set<str>(items: ["alpha"]), counts: map<str, i64>(items: ["alpha": 1])), _,
+            AtomicCollections(tags: set<str>(items: []), counts: map<str, i64>(items: [])), retained
+        ]
+    }
+
+    # An empty complete child is data, not an empty sparse outer publication.
+    test complete_empty_containers_are_present_sparse_children {
+        let tags: set<str> = set<str>(items: ["alpha"])
+        let no_tags: set<str> = set<str>(items: [])
+        assert eval(sparse_complete_sets, [delta<list<atomic<set<str>>, 2>>(items: [1: tags]), _, delta<list<atomic<set<str>>, 2>>(items: [1: no_tags])]) == [
+            delta<list<atomic<set<str>>, 2>>(items: [1: tags]), _, delta<list<atomic<set<str>>, 2>>(items: [1: no_tags])
+        ]
+        let counts: map<str, i64> = map<str, i64>(items: ["alpha": 1])
+        let no_counts: map<str, i64> = map<str, i64>(items: [])
+        assert eval(sparse_complete_maps, [delta<map<i64, atomic<map<str, i64>>>>(upsert: [1: counts]), delta<map<i64, atomic<map<str, i64>>>>(upsert: [1: no_counts]), delta<map<i64, atomic<map<str, i64>>>>(remove: [1]), _]) == [
+            delta<map<i64, atomic<map<str, i64>>>>(upsert: [1: counts]), delta<map<i64, atomic<map<str, i64>>>>(upsert: [1: no_counts]), delta<map<i64, atomic<map<str, i64>>>>(remove: [1]), _
+        ]
+    }
+
+    fn complete_map_replay_context(tick: i64) { when { } }
+    fn complete_map_replayed(tick: i64, const samples: list<TimedValue<atomic<map<str, list<i64>>>>>) -> atomic<map<str, list<i64>>> {
+        complete_map_replay_context(tick)
+        replay(samples)
+    }
+    test complete_map_timed_replay_owns_nested_values_across_runs {
+        var row: list<i64> = []
+        push(row, 1)
+        var sample: TimedValue<atomic<map<str, list<i64>>>> = TimedValue<atomic<map<str, list<i64>>>>(
+            time: @1970-01-01T00:00:00.000001Z, value: map<str, list<i64>>(items: ["row": row])
+        )
+        var samples: list<TimedValue<atomic<map<str, list<i64>>>>> = []
+        push(samples, sample)
+        push(row, 2)
+        sample.value = map<str, list<i64>>(items: ["row": row])
+        sample.time = @1970-01-01T00:00:00.000003Z
+        push(samples, sample)
+        sample.value = map<str, list<i64>>(items: [])
+        assert eval(complete_map_replayed, tick: [1, 1, 1, 1], samples: samples) == [
+            map<str, list<i64>>(items: ["row": [1]]), _, map<str, list<i64>>(items: ["row": [1, 2]]), _
+        ]
+        assert eval(complete_map_replayed, tick: [1, 1, 1, 1], samples: samples) == [
+            map<str, list<i64>>(items: ["row": [1]]), _, map<str, list<i64>>(items: ["row": [1, 2]]), _
+        ]
+        let empty: list<TimedValue<atomic<map<str, list<i64>>>>> = []
+        assert eval(complete_map_replayed, tick: [1, 1], samples: empty) == [_, _]
+    }
+}
