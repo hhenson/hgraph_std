@@ -1,0 +1,93 @@
+module hgraph.std part state_observation_values_tests
+
+test {
+    # Only step is required-valid. The watched input may still be invalid.
+    fn sampled_scalar(value: i64, step: i64) -> i64 {
+        when modified(step) && valid(step) {
+            if valid(value) { return value }
+            return -1
+        }
+    }
+
+    test independent_step_observes_invalid_and_held_scalar_state {
+        assert eval(sampled_scalar,
+            value: [_, 7, _, _, 9, _], step: [1, _, 1, 1, _, 1]
+        ) == [-1, _, 7, 7, _, 9]
+    }
+
+    fn mutable_book(action: i64) -> map<i64, i64> {
+        inject out
+        when modified(action) && valid(action) {
+            if action == 1 {
+                insert(out, 1, 7)
+                insert(out, 2, 100)
+            }
+            if action == 2 { invalidate(out, 1) }
+            if action == 3 { update(out, 1, 9) }
+            if action == 4 { remove(out, 1) }
+            if action == 5 { insert(out, 1, 11) }
+        }
+    }
+    fn sampled_book(book: map<i64, i64>, step: i64) -> i64 {
+        when modified(step) && valid(step) {
+            if valid(book) {
+                if contains(book, 1) {
+                    for key, child in items(book) {
+                        if key == 1 {
+                            if valid(child) { return child }
+                            return -1
+                        }
+                    }
+                }
+                return -2
+            }
+            return -3
+        }
+    }
+    fn observed_book(action: i64, step: i64) -> i64 => sampled_book(mutable_book(action), step)
+
+    # Observe strictly after each mutation, including a second idle observation.
+    # The valid sibling avoids dependence on the last-valid-child parent rule.
+    test map_invalidation_retains_membership_and_update_revalidates_child {
+        assert eval(observed_book,
+            action: [1, _, _, 2, _, _, 3, _, 4, _, 5, _],
+            step:   [_, 1, 1, _, 1, 1, _, 1, _, 1, _, 1]
+        ) == [_, 7, 7, _, -1, -1, _, 9, _, -2, _, 11]
+    }
+
+    fn mutable_samples(action: i64) -> list<i64> {
+        inject out
+        when modified(action) && valid(action) {
+            if action == 1 {
+                push(out, 7)
+                push(out, 100)
+            }
+            if action == 2 { invalidate(out, 0) }
+            if action == 3 { push(out, 9) }
+            if action == 4 { pop(out) }
+        }
+    }
+    fn sampled_samples(samples: list<i64>, step: i64) -> atomic<tuple<i64, bool, bool>> {
+        when modified(step) && valid(step) {
+            if valid(samples) {
+                var count: i64 = 0
+                var first_valid: bool = false
+                for index, child in items(samples) {
+                    count += 1
+                    if index == 0 { first_valid = valid(child) }
+                }
+                return (count, first_valid, all_valid(samples))
+            }
+        }
+    }
+    fn observed_samples(action: i64, step: i64) -> atomic<tuple<i64, bool, bool>> => sampled_samples(mutable_samples(action), step)
+
+    # Each observation is one complete atomic snapshot of the three metrics.
+    # Count live positions without reading an invalid child's retained payload.
+    test list_invalidation_retains_length_across_later_push_and_pop {
+        assert eval(observed_samples,
+            action: [1, _, _, 2, _, _, 3, _, 4, _],
+            step:   [_, 1, 1, _, 1, 1, _, 1, _, 1]
+        ) == [_, (2, true, true), (2, true, true), _, (2, false, false), (2, false, false), _, (3, false, false), _, (2, false, false)]
+    }
+}
