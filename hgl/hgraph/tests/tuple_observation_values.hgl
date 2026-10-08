@@ -1,0 +1,86 @@
+module hgraph.std part tuple_observation_values_tests
+
+test {
+    fn ordinary_pair(value: i64) -> tuple<i64, bool> {
+        when { return (value, value > 0) }
+    }
+    fn observed_pair_first(value: tuple<i64, bool>) -> i64 {
+        when all_valid(value) {
+            let copy = value
+            return copy[0]
+        }
+    }
+    fn observed_pair_copy(value: tuple<i64, bool>) -> tuple<i64, bool> {
+        when all_valid(value) {
+            let copy = value
+            return copy
+        }
+    }
+    fn observed_sparse_first(value: tuple<i64, bool>) -> i64 {
+        when valid(value) && valid(value[0]) {
+            let copy = value
+            return copy[0]
+        }
+    }
+    fn observed_sparse_copy(value: tuple<i64, bool>) -> tuple<i64, bool> {
+        when valid(value) && valid(value[0]) {
+            let copy = value
+            return copy
+        }
+    }
+
+    test tuple_runtime_construction_and_retained_observation {
+        assert eval(ordinary_pair, [7, _, -1, 0]) == [(7, true), _, (-1, false), (0, false)]
+        # A later sparse publication changes only its supplied child.
+        assert eval(observed_pair_first, [(7, false), (_, true), (9, _), _]) == [7, 7, 9, _]
+        assert eval(observed_pair_copy, [(7, false), (_, true), (9, _), _]) == [(7, false), (7, true), (9, true), _]
+    }
+
+    test tuple_observation_preserves_unset_children_and_false {
+        # Reading a present child does not require its sibling to be valid.
+        assert eval(observed_sparse_first, [(7, _), (_, false), _]) == [7, 7, _]
+        # The first retained result stays sparse; false is a present payload.
+        assert eval(observed_sparse_copy, [(7, _), (_, false), _]) == [(7, _), (7, false), _]
+    }
+
+    fn observed_nested_copy(value: tuple<tuple<i64, bool>, i64>) -> tuple<tuple<i64, bool>, i64> {
+        when all_valid(value) {
+            let copy = value
+            return copy
+        }
+    }
+    fn observed_list_copy(value: tuple<list<tuple<i64, bool>, 2>, bool>) -> tuple<list<tuple<i64, bool>, 2>, bool> {
+        when valid(value) && valid(value[0]) && valid(value[1]) {
+            let copy = value
+            return copy
+        }
+    }
+    fn observed_map_copy(value: tuple<map<i64, tuple<i64, bool>>, bool>) -> tuple<map<i64, tuple<i64, bool>>, bool> {
+        when valid(value) && valid(value[0]) && valid(value[1]) {
+            let copy = value
+            return copy
+        }
+    }
+
+    test tuple_observation_retains_nested_values_and_sparse_collection_children {
+        assert eval(observed_nested_copy, [((7, false), 1), ((_, true), _), (_, 2)]) == [((7, false), 1), ((7, true), 1), ((7, true), 2)]
+        let partial = delta<tuple<i64, bool>>(items: [0: 7])
+        let complete = delta<tuple<i64, bool>>(items: [0: 7, 1: false])
+        let child_tick = delta<tuple<i64, bool>>(items: [1: false])
+        let list_first = delta<tuple<list<tuple<i64, bool>, 2>, bool>>(items: [
+            0: delta<list<tuple<i64, bool>, 2>>(items: [0: partial]), 1: true])
+        let list_tick = delta<tuple<list<tuple<i64, bool>, 2>, bool>>(items: [
+            0: delta<list<tuple<i64, bool>, 2>>(items: [0: child_tick])])
+        let list_second = delta<tuple<list<tuple<i64, bool>, 2>, bool>>(items: [
+            0: delta<list<tuple<i64, bool>, 2>>(items: [0: complete]), 1: true])
+        # The unused list position remains unset throughout both observations.
+        assert eval(observed_list_copy, [list_first, _, list_tick]) == [list_first, _, list_second]
+        let map_first = delta<tuple<map<i64, tuple<i64, bool>>, bool>>(items: [
+            0: delta<map<i64, tuple<i64, bool>>>(upsert: [4: partial]), 1: true])
+        let map_tick = delta<tuple<map<i64, tuple<i64, bool>>, bool>>(items: [
+            0: delta<map<i64, tuple<i64, bool>>>(upsert: [4: child_tick])])
+        let map_second = delta<tuple<map<i64, tuple<i64, bool>>, bool>>(items: [
+            0: delta<map<i64, tuple<i64, bool>>>(upsert: [4: complete]), 1: true])
+        assert eval(observed_map_copy, [map_first, _, map_tick]) == [map_first, _, map_second]
+    }
+}
