@@ -8,6 +8,7 @@ no Python, C++ or Rust implementation and selects no target provider.
 - [Operator contracts](hgl/hgraph/operators.hgl)
 - [Date to datetime conversion](docs/date-conversion.md)
 - [Ordinary scalar replay and record](docs/replay-record.md), also configured by `eval`
+- [Independently sampled endpoint state](docs/state-observation.md)
 - [HGL implementations](hgl/hgraph/impl)
 - [Behaviour tests](hgl/hgraph/tests)
 - [Native support](docs/native-support.md)
