@@ -1,0 +1,79 @@
+module hgraph.std part unset_required_read_values_tests
+
+struct UnsetReadNumber {
+    sibling: i64
+    child: i64
+}
+struct UnsetReadFlag {
+    sibling: i64
+    child: bool
+}
+struct UnsetReadSamples {
+    sibling: i64
+    child: list<i64, 2>
+}
+
+test {
+    fn unset_read_number_payload(value: UnsetReadNumber) -> i64 {
+        when {
+            let copy = value
+            let child = copy.child
+            return child + 1
+        }
+    }
+    fn unset_read_boolean_payload(value: UnsetReadFlag) -> i64 {
+        when {
+            let copy = value
+            let child = copy.child
+            if child { return 1 } else { return 0 }
+        }
+    }
+    fn unset_read_list_length(value: UnsetReadSamples) -> i64 {
+        when {
+            let copy = value
+            return len(copy.child)
+        }
+    }
+    fn unset_read_list_item(value: UnsetReadSamples) -> i64 {
+        when {
+            let copy = value
+            let child = copy.child
+            return child[0] + 1
+        }
+    }
+    fn unset_read_reconstruct_tuple(value: tuple<i64, bool>) -> tuple<i64, bool> {
+        when {
+            let copy = value
+            let child = copy[1]
+            return (copy[0], child)
+        }
+    }
+
+    # A valid sibling admits the partial source; payload consumption must fail.
+    test unset_required_payload_reads_raise {
+        assert raises("value.unset_read") {
+            eval(unset_read_number_payload, value: [delta<UnsetReadNumber>(sibling: 1)])
+        }
+        assert raises("value.unset_read") {
+            eval(unset_read_boolean_payload, value: [delta<UnsetReadFlag>(sibling: 1)])
+        }
+        assert raises("value.unset_read") {
+            eval(unset_read_list_length, value: [delta<UnsetReadSamples>(sibling: 1)])
+        }
+        assert raises("value.unset_read") {
+            eval(unset_read_list_item, value: [delta<UnsetReadSamples>(sibling: 1)])
+        }
+        assert true
+    }
+
+    # Zero and false are present payloads, not absence.
+    test unset_required_payload_controls_and_retention {
+        assert eval(unset_read_number_payload, value: [delta<UnsetReadNumber>(sibling: 1, child: 0)]) == [1]
+        assert eval(unset_read_boolean_payload, value: [delta<UnsetReadFlag>(sibling: 1, child: false), delta<UnsetReadFlag>(child: true)]) == [0, 1]
+        assert eval(unset_read_list_length, value: [delta<UnsetReadSamples>(sibling: 1, child: delta<list<i64, 2>>(items: [0: 4, 1: 5]))]) == [2]
+        assert eval(unset_read_list_item, value: [delta<UnsetReadSamples>(sibling: 1, child: delta<list<i64, 2>>(items: [0: 4, 1: 5]))]) == [5]
+        # Independent runs distinguish retained unset state from present false.
+        assert eval(unset_read_reconstruct_tuple, value: [(1, _)]) == [(1, _)]
+        assert eval(unset_read_reconstruct_tuple, value: [(1, false)]) == [(1, false)]
+    }
+}
