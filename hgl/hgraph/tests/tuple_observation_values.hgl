@@ -17,13 +17,13 @@ test {
         }
     }
     fn observed_sparse_first(value: tuple<i64, bool>) -> i64 {
-        when valid(value) && valid(value[0]) {
+        when valid(value, value[0]) {
             let copy = value
             return copy[0]
         }
     }
     fn observed_sparse_copy(value: tuple<i64, bool>) -> tuple<i64, bool> {
-        when valid(value) && valid(value[0]) {
+        when valid(value, value[0]) {
             let copy = value
             return copy
         }
@@ -50,13 +50,13 @@ test {
         }
     }
     fn observed_list_copy(value: tuple<list<tuple<i64, bool>, 2>, bool>) -> tuple<list<tuple<i64, bool>, 2>, bool> {
-        when valid(value) && valid(value[0]) && valid(value[1]) {
+        when valid(value, value[0], value[1]) {
             let copy = value
             return copy
         }
     }
     fn observed_map_copy(value: tuple<map<i64, tuple<i64, bool>>, bool>) -> tuple<map<i64, tuple<i64, bool>>, bool> {
-        when valid(value) && valid(value[0]) && valid(value[1]) {
+        when valid(value, value[0], value[1]) {
             let copy = value
             return copy
         }

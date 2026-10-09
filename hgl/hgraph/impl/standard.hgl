@@ -519,10 +519,10 @@ impl fn make_tsd<K>(key: K, value: duration) -> map<K, duration> {
 impl fn make_tsd_remove<K>(key: K, value: bool, remove_key: bool) -> map<K, bool> {
     inject out
     when valid(key) && modified(key, value, remove_key) {
-        let remove = valid(remove_key) && remove_key && (modified(key) || modified(remove_key))
+        let remove = valid(remove_key) && remove_key && modified(key, remove_key)
         if remove {
             discard(out, key)
-        } else if valid(value) && (modified(key) || modified(value)) {
+        } else if valid(value) && modified(key, value) {
             upsert(out, key, value)
         }
     }
@@ -530,10 +530,10 @@ impl fn make_tsd_remove<K>(key: K, value: bool, remove_key: bool) -> map<K, bool
 impl fn make_tsd_remove<K>(key: K, value: i64, remove_key: bool) -> map<K, i64> {
     inject out
     when valid(key) && modified(key, value, remove_key) {
-        let remove = valid(remove_key) && remove_key && (modified(key) || modified(remove_key))
+        let remove = valid(remove_key) && remove_key && modified(key, remove_key)
         if remove {
             discard(out, key)
-        } else if valid(value) && (modified(key) || modified(value)) {
+        } else if valid(value) && modified(key, value) {
             upsert(out, key, value)
         }
     }
@@ -541,10 +541,10 @@ impl fn make_tsd_remove<K>(key: K, value: i64, remove_key: bool) -> map<K, i64> 
 impl fn make_tsd_remove<K>(key: K, value: f64, remove_key: bool) -> map<K, f64> {
     inject out
     when valid(key) && modified(key, value, remove_key) {
-        let remove = valid(remove_key) && remove_key && (modified(key) || modified(remove_key))
+        let remove = valid(remove_key) && remove_key && modified(key, remove_key)
         if remove {
             discard(out, key)
-        } else if valid(value) && (modified(key) || modified(value)) {
+        } else if valid(value) && modified(key, value) {
             upsert(out, key, value)
         }
     }
@@ -552,10 +552,10 @@ impl fn make_tsd_remove<K>(key: K, value: f64, remove_key: bool) -> map<K, f64> 
 impl fn make_tsd_remove<K>(key: K, value: str, remove_key: bool) -> map<K, str> {
     inject out
     when valid(key) && modified(key, value, remove_key) {
-        let remove = valid(remove_key) && remove_key && (modified(key) || modified(remove_key))
+        let remove = valid(remove_key) && remove_key && modified(key, remove_key)
         if remove {
             discard(out, key)
-        } else if valid(value) && (modified(key) || modified(value)) {
+        } else if valid(value) && modified(key, value) {
             upsert(out, key, value)
         }
     }
@@ -563,10 +563,10 @@ impl fn make_tsd_remove<K>(key: K, value: str, remove_key: bool) -> map<K, str> 
 impl fn make_tsd_remove<K>(key: K, value: date, remove_key: bool) -> map<K, date> {
     inject out
     when valid(key) && modified(key, value, remove_key) {
-        let remove = valid(remove_key) && remove_key && (modified(key) || modified(remove_key))
+        let remove = valid(remove_key) && remove_key && modified(key, remove_key)
         if remove {
             discard(out, key)
-        } else if valid(value) && (modified(key) || modified(value)) {
+        } else if valid(value) && modified(key, value) {
             upsert(out, key, value)
         }
     }
@@ -574,10 +574,10 @@ impl fn make_tsd_remove<K>(key: K, value: date, remove_key: bool) -> map<K, date
 impl fn make_tsd_remove<K>(key: K, value: time, remove_key: bool) -> map<K, time> {
     inject out
     when valid(key) && modified(key, value, remove_key) {
-        let remove = valid(remove_key) && remove_key && (modified(key) || modified(remove_key))
+        let remove = valid(remove_key) && remove_key && modified(key, remove_key)
         if remove {
             discard(out, key)
-        } else if valid(value) && (modified(key) || modified(value)) {
+        } else if valid(value) && modified(key, value) {
             upsert(out, key, value)
         }
     }
@@ -585,10 +585,10 @@ impl fn make_tsd_remove<K>(key: K, value: time, remove_key: bool) -> map<K, time
 impl fn make_tsd_remove<K>(key: K, value: datetime, remove_key: bool) -> map<K, datetime> {
     inject out
     when valid(key) && modified(key, value, remove_key) {
-        let remove = valid(remove_key) && remove_key && (modified(key) || modified(remove_key))
+        let remove = valid(remove_key) && remove_key && modified(key, remove_key)
         if remove {
             discard(out, key)
-        } else if valid(value) && (modified(key) || modified(value)) {
+        } else if valid(value) && modified(key, value) {
             upsert(out, key, value)
         }
     }
@@ -596,10 +596,10 @@ impl fn make_tsd_remove<K>(key: K, value: datetime, remove_key: bool) -> map<K, 
 impl fn make_tsd_remove<K>(key: K, value: duration, remove_key: bool) -> map<K, duration> {
     inject out
     when valid(key) && modified(key, value, remove_key) {
-        let remove = valid(remove_key) && remove_key && (modified(key) || modified(remove_key))
+        let remove = valid(remove_key) && remove_key && modified(key, remove_key)
         if remove {
             discard(out, key)
-        } else if valid(value) && (modified(key) || modified(value)) {
+        } else if valid(value) && modified(key, value) {
             upsert(out, key, value)
         }
     }
