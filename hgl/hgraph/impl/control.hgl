@@ -67,7 +67,7 @@ Notes:
     from the first evaluation.
 */
 impl fn default_ref<T>(ts_ref: ref<T>, ts: T, default_value: ref<T>) -> ref<T> {
-    when valid(ts) && valid(ts_ref) {
+    when valid(ts, ts_ref) {
         passivate(ts)
         return ts_ref
     }
