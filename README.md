@@ -15,6 +15,7 @@ no Python, C++ or Rust implementation and selects no target provider.
 - [Required payload-read failures and retention controls](hgl/hgraph/tests/unset_required_read_values.hgl)
 - [Graph-wired reference identity, following and retained designations](hgl/hgraph/tests/reference_values.hgl)
 - [Child projections through references during graph wiring](hgl/hgraph/tests/reference_projection_values.hgl)
+- [Owned REF output routes and exported child trees](docs/reference-owner-export-values.md)
 - [Native support](docs/native-support.md)
 
 The [language specification](https://github.com/hhenson/hgraph_spec) defines
