@@ -279,6 +279,9 @@ test {
     fn empty_atomic_struct(value: atomic<EmptyDeltaZero>) -> atomic<EmptyDeltaZero> => empty_forward(value)
     fn empty_rolling(value: rolling<list<i64>, 2>) -> rolling<list<i64>, 2> => empty_forward(value)
     fn empty_scalar<T>(value: T) -> T => empty_forward(value)
+    fn empty_scalar_i64(value: i64) -> i64 => empty_scalar(value)
+    fn empty_scalar_bool(value: bool) -> bool => empty_scalar(value)
+    fn empty_scalar_str(value: str) -> str => empty_scalar(value)
     test complete_empty_arrivals_and_equal_scalars_still_tick {
         let empty: list<i64> = []
         assert eval(empty_atomic, [empty, empty, _]) == [empty, empty, _]
@@ -289,9 +292,9 @@ test {
         assert eval(empty_atomic_map, [empty_map_value, empty_map_value, _]) == [empty_map_value, empty_map_value, _]
         assert eval(empty_atomic_struct, [empty_struct_value, empty_struct_value, _]) == [empty_struct_value, empty_struct_value, _]
         assert eval(empty_rolling, [empty, empty, _]) == [empty, empty, _]
-        assert eval(empty_scalar, [0, 0, _]) == [0, 0, _]
-        assert eval(empty_scalar, [false, false, _]) == [false, false, _]
-        assert eval(empty_scalar, ["", "", _]) == ["", "", _]
+        assert eval(empty_scalar_i64, [0, 0, _]) == [0, 0, _]
+        assert eval(empty_scalar_bool, [false, false, _]) == [false, false, _]
+        assert eval(empty_scalar_str, ["", "", _]) == ["", "", _]
     }
 
     fn empty_replay_context(step: i64) { when {} }
