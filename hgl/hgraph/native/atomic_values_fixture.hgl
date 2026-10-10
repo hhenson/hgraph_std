@@ -1,0 +1,15 @@
+module hgraph.std part native_atomic_values_fixture
+
+# Test-only shared interface; add this part with native_atomic_values.hgl.
+# The selected package descriptor supplies the contract in
+# docs/native-atomic-values.md. These are owning scalars, never resource state.
+export native type Token
+export native type TokenOther
+export native type TextOnly
+
+native const fn token(text: str) -> Token
+native const fn token_text(value: Token) -> str
+native const fn token_other(text: str) -> TokenOther
+native const fn token_other_text(value: TokenOther) -> str
+native const fn text_only(text: str) -> TextOnly
+native const fn text_only_text(value: TextOnly) -> str
