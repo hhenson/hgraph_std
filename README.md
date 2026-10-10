@@ -10,6 +10,7 @@ no Python, C++ or Rust implementation and selects no target provider.
 - [Ordinary scalar replay and record](docs/replay-record.md), also configured by `eval`
 - [Empty sparse delta validity and repeated-application controls](hgl/hgraph/tests/empty_delta_validity.hgl)
 - [Independently sampled endpoint state](docs/state-observation.md)
+- [Conditional REF owner-expiry expectations](hgl/hgraph/tests/reference_conditional_expiry.hgl)
 - [HGL implementations](hgl/hgraph/impl)
 - [Behaviour tests](hgl/hgraph/tests)
 - [Required payload-read failures and retention controls](hgl/hgraph/tests/unset_required_read_values.hgl)
@@ -18,6 +19,8 @@ no Python, C++ or Rust implementation and selects no target provider.
 - [Native atomic scalar fixture and shared values tests](docs/native-atomic-values.md)
 - [Direct and boxed Boolean equality, hash and total order](hgl/hgraph/tests/any_bool_values.hgl)
 - [Any contained-type capability checks and empty-container edges](docs/any-capability-edges.md)
+- [Graph-wired reference identity, following and retained designations](hgl/hgraph/tests/reference_values.hgl)
+- [Child projections through references during graph wiring](hgl/hgraph/tests/reference_projection_values.hgl)
 - [Native support](docs/native-support.md)
 
 The [language specification](https://github.com/hhenson/hgraph_spec) defines
