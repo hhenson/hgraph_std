@@ -1,0 +1,46 @@
+module hgraph.std part any_bool_values_tests
+
+test {
+    fn bool_compare(left: bool, right: bool) -> atomic<tuple<bool, bool, bool, bool, bool, bool>> {
+        when { return (left == right, left != right, left < right, left <= right, left > right, left >= right) }
+    }
+    fn any_bool_compare(left: any, right: any) -> atomic<tuple<bool, bool, bool, bool, bool, bool>> {
+        when { return (left == right, left != right, left < right, left <= right, left > right, left >= right) }
+    }
+    test direct_and_boxed_boolean_comparisons_share_total_order {
+        assert false < true
+        assert true > false
+        assert any(false) < any(true)
+        assert any(true) > any(false)
+        assert any(false) == any(false)
+        assert any(true) != any(false)
+        assert any(false) <= any(false)
+        assert any(true) >= any(true)
+        assert eval(bool_compare, left: [false, true, false, true, _], right: [false, false, true, true, _]) == [
+            (true, false, false, true, false, true),
+            (false, true, false, false, true, true),
+            (false, true, true, true, false, false),
+            (true, false, false, true, false, true), _
+        ]
+        assert eval(any_bool_compare, left: [any(false), any(true), any(false), any(true), _], right: [any(false), any(false), any(true), any(true), _]) == [
+            (true, false, false, true, false, true),
+            (false, true, false, false, true, true),
+            (false, true, true, true, false, false),
+            (true, false, false, true, false, true), _
+        ]
+    }
+
+    fn any_bool_members(value: set<any>) -> set<any> => pass_through(value)
+    test boxed_boolean_keys_keep_value_identity_without_numeric_conversion {
+        let first: any = any(false)
+        let equal_first: any = any(false)
+        let second: any = any(true)
+        assert eval(any_bool_members, [delta<set<any>>(added: [first, second, any(0)]), _, delta<set<any>>(removed: [equal_first]), delta<set<any>>(added: [equal_first])]) == [
+            delta<set<any>>(added: [any(0), second, equal_first]), _, delta<set<any>>(removed: [first]), delta<set<any>>(added: [first])
+        ]
+        assert eval(any_bool_compare, left: [any(false), any(true)], right: [any(0), any(1)]) == [
+            (false, true, false, false, false, false),
+            (false, true, false, false, false, false)
+        ]
+    }
+}
