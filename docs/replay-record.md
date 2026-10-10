@@ -14,9 +14,11 @@ export struct TimedValue<T> {
 reduces to the scalar type for a scalar shape.
 
 `replay(const values: list<TimedValue<T>>) -> T` consumes a typed unbounded
-ordinary list. An entry is one present publication at its absolute timestamp.
-False, zero and empty text are values; silence has no entry. Equal values at
-different times publish separately. Empty lists publish nothing, and their
+ordinary list. An entry supplies one present payload at its absolute timestamp.
+False, zero and empty text are values; silence has no entry. Equal scalar and
+complete atomic values at different times publish separately. An empty sparse
+delta validates and ticks an invalid target, but is silent on a valid target.
+An empty timed-entry list publishes nothing, and its
 concrete element type still fixes the result type. A fixed-size list is a
 different type and is not implicitly converted.
 
@@ -62,26 +64,43 @@ empty timed data while retaining different horizons. Callers can also compose
 replay and record directly as in the example above.
 
 The normative contract and cases are in
-[ordinary replay and recording](https://github.com/hhenson/hgraph_spec/blob/f2435639af2c8a8c4dd1c5b319c30cf6ca3df5ba/library/ordinary_replay_record.md)
-and [its cases](https://github.com/hhenson/hgraph_spec/blob/f2435639af2c8a8c4dd1c5b319c30cf6ca3df5ba/runtime/cases_ordinary_replay_record.md).
-The admitted types are bool, i64, f64, str, date, time, datetime, duration,
-sets of bool or i64, fixed-size lists, positional tuples, required-field
-nominal structs, and maps with i64 keys. Structural children recursively use
-this same profile. Each publication has the exact ordinary type `delta<T>`;
+[ordinary replay and recording](https://github.com/hhenson/hgraph_spec/blob/c0e55d1511f11a798acc07b9e47054c18beef5ae/library/ordinary_replay_record.md)
+and [its cases](https://github.com/hhenson/hgraph_spec/blob/c0e55d1511f11a798acc07b9e47054c18beef5ae/runtime/cases_ordinary_replay_record.md).
+Replay and record use the admitted originating-shape publication contracts,
+including scalar and enum values, sparse structural shapes, complete atomic
+values and rolling arrivals. The generic declarations do not admit arbitrary
+shapes beyond those contracts. Each publication has the exact ordinary type
+`delta<T>`;
 for a scalar this reduces to the scalar itself. A structural delta retains
 only the supplied members or children, including nested sparse changes. It
 never fills absent children from held values. Each retention into a timed
 entry, list, or global entry owns its data independently.
 
-Empty structural deltas are valid ordinary stored values but are outside the
-admitted publication profile. Replay's output checks publication admission;
-eval additionally checks its entire supplied input trace before starting any
-node. Invalid set membership changes and removals of absent map keys fail;
+Explicit empty structural deltas follow
+[EMPTY-1–4](https://github.com/hhenson/hgraph_spec/blob/c0e55d1511f11a798acc07b9e47054c18beef5ae/language/docs/design/empty-delta-validity.md).
+An invalid target becomes valid and modified, without initializing children or
+membership. An already valid target is unchanged and does not tick. Nested
+empty deltas apply that rule at each explicitly targeted child. Recording
+contains only actual ticks; eval retains the original dense horizon and emits
+`_` for suppressed applications. An empty payload is distinct from silence.
+Same-cycle cancellation can leave a producer tick with an empty net delta;
+applying that payload to another valid endpoint does not reproduce its tick.
+Empty atomic snapshots and empty ordinary rolling arrivals still tick on repeats.
+
+Replay's output checks publication admission; eval additionally checks its
+entire supplied input trace before starting any node. Invalid set membership
+changes and removals of absent map keys fail;
 they do not become silent publications. A map removal drops child state, so
 reinsertion starts a fresh child. Fixed list size, tuple positions, and nominal
 struct identity remain part of the exact delta type.
 
-The [ordinary delta contract](https://github.com/hhenson/hgraph_spec/blob/f2435639af2c8a8c4dd1c5b319c30cf6ca3df5ba/language/docs/design/ordinary-delta-types.md)
-defines storage and publication separately. Growing lists, windows, reference
-designations, and additional scalar/provider types need their own admitted
-contracts and are not implied by the generic declarations above.
+The [ordinary delta contract](https://github.com/hhenson/hgraph_spec/blob/c0e55d1511f11a798acc07b9e47054c18beef5ae/language/docs/design/ordinary-delta-types.md)
+defines storage and publication separately. Empty sparse application does not
+extend ordinary held structural-value publication to empty or wholly invalid
+snapshots. Reference designations and additional provider types still require
+their own admitted contracts.
+
+The [shared empty-delta tests](../hgl/hgraph/tests/empty_delta_validity.hgl)
+exercise replay, dense horizons, independent state observations, child
+revalidation and cancellation. Whole-output invalidation has no added HGL
+spelling; its runtime case belongs to the normative backend conformance suite.

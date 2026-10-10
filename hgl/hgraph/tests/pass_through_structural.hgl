@@ -38,7 +38,7 @@ test {
         assert eval(nested, [delta<list<map<i64,set<bool>>,2>>(items:[1:delta<map<i64,set<bool>>>(upsert:[5:delta<set<bool>>(added:[false])])]), delta<list<map<i64,set<bool>>,2>>(items:[1:delta<map<i64,set<bool>>>(remove:[5])]), delta<list<map<i64,set<bool>>,2>>(items:[1:delta<map<i64,set<bool>>>(upsert:[5:delta<set<bool>>(added:[false])])])]) == [delta<list<map<i64,set<bool>>,2>>(items:[1:delta<map<i64,set<bool>>>(upsert:[5:delta<set<bool>>(added:[false])])]), delta<list<map<i64,set<bool>>,2>>(items:[1:delta<map<i64,set<bool>>>(remove:[5])]), delta<list<map<i64,set<bool>>,2>>(items:[1:delta<map<i64,set<bool>>>(upsert:[5:delta<set<bool>>(added:[false])])])]
     }
     test empty_and_silent_structural_inputs {
-        # A zero-size fixed list has no admitted nonempty publication.
+        # No input entries and silent cells remain distinct from an explicit empty delta.
         assert eval(zero, []) == []
         assert eval(zero, [_,_,_]) == [_,_,_]
         assert eval(set_i64, []) == []
