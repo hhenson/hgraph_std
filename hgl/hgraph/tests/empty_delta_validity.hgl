@@ -1,0 +1,310 @@
+module hgraph.std part empty_delta_validity_tests
+
+struct EmptyDeltaFields { left: i64
+    right: bool }
+struct EmptyDeltaChildren { left: list<i64, 2>
+    right: list<i64, 2> }
+struct EmptyDeltaZero {}
+
+test {
+    fn empty_forward<T>(value: T) -> T { when { return delta_value(value) } }
+    # Only step is required valid, so an independent observation can see invalid inputs.
+    fn empty_metadata<T>(value: T, step: i64) -> atomic<tuple<bool, bool, bool>> {
+        when modified(step) && valid(step) {
+            return (valid(value), modified(value), all_valid(value))
+        }
+    }
+    fn empty_time<T>(value: T, step: i64) -> datetime {
+        when modified(step) && valid(step, value) { return last_modified(value) }
+    }
+    fn empty_set(value: set<i64>) -> set<i64> => empty_forward(value)
+    fn empty_set_metadata(value: set<i64>, step: i64) -> atomic<tuple<bool, bool, bool>> => empty_metadata(value, step)
+    fn empty_set_time(value: set<i64>, step: i64) -> datetime => empty_time(value, step)
+    fn empty_map(value: map<i64, i64>) -> map<i64, i64> => empty_forward(value)
+    fn empty_map_metadata(value: map<i64, i64>, step: i64) -> atomic<tuple<bool, bool, bool>> => empty_metadata(value, step)
+    fn empty_map_time(value: map<i64, i64>, step: i64) -> datetime => empty_time(value, step)
+    fn empty_fixed(value: list<i64, 2>) -> list<i64, 2> => empty_forward(value)
+    fn empty_fixed_metadata(value: list<i64, 2>, step: i64) -> atomic<tuple<bool, bool, bool>> => empty_metadata(value, step)
+    fn empty_fixed_time(value: list<i64, 2>, step: i64) -> datetime => empty_time(value, step)
+    fn empty_growing(value: list<i64>) -> list<i64> => empty_forward(value)
+    fn empty_growing_metadata(value: list<i64>, step: i64) -> atomic<tuple<bool, bool, bool>> => empty_metadata(value, step)
+    fn empty_growing_time(value: list<i64>, step: i64) -> datetime => empty_time(value, step)
+    fn empty_tuple(value: tuple<i64, bool>) -> tuple<i64, bool> => empty_forward(value)
+    fn empty_tuple_metadata(value: tuple<i64, bool>, step: i64) -> atomic<tuple<bool, bool, bool>> => empty_metadata(value, step)
+    fn empty_tuple_time(value: tuple<i64, bool>, step: i64) -> datetime => empty_time(value, step)
+    fn empty_struct(value: EmptyDeltaFields) -> EmptyDeltaFields => empty_forward(value)
+    fn empty_struct_metadata(value: EmptyDeltaFields, step: i64) -> atomic<tuple<bool, bool, bool>> => empty_metadata(value, step)
+    fn empty_struct_time(value: EmptyDeltaFields, step: i64) -> datetime => empty_time(value, step)
+
+    test empty_sparse_inputs_preserve_dense_horizon {
+        assert eval(empty_set, value: [delta<set<i64>>(), delta<set<i64>>(), delta<set<i64>>(added: [7]), delta<set<i64>>(), _]) == [delta<set<i64>>(), _, delta<set<i64>>(added: [7]), _, _]
+        assert eval(empty_map, value: [delta<map<i64, i64>>(), delta<map<i64, i64>>(), delta<map<i64, i64>>(upsert: [7: 10]), delta<map<i64, i64>>(), _]) == [delta<map<i64, i64>>(), _, delta<map<i64, i64>>(upsert: [7: 10]), _, _]
+        assert eval(empty_fixed, value: [delta<list<i64, 2>>(), delta<list<i64, 2>>(), delta<list<i64, 2>>(items: [0: 7]), delta<list<i64, 2>>(), _]) == [delta<list<i64, 2>>(), _, delta<list<i64, 2>>(items: [0: 7]), _, _]
+        assert eval(empty_growing, value: [delta<list<i64>>(), delta<list<i64>>(), delta<list<i64>>(items: [0: 7]), delta<list<i64>>(), _]) == [delta<list<i64>>(), _, delta<list<i64>>(items: [0: 7]), _, _]
+        assert eval(empty_tuple, value: [delta<tuple<i64, bool>>(), delta<tuple<i64, bool>>(), delta<tuple<i64, bool>>(items: [0: 7]), delta<tuple<i64, bool>>(), _]) == [delta<tuple<i64, bool>>(), _, delta<tuple<i64, bool>>(items: [0: 7]), _, _]
+        assert eval(empty_struct, value: [delta<EmptyDeltaFields>(), delta<EmptyDeltaFields>(), delta<EmptyDeltaFields>(left: 7), delta<EmptyDeltaFields>(), _]) == [delta<EmptyDeltaFields>(), _, delta<EmptyDeltaFields>(left: 7), _, _]
+    }
+
+    # A fixed shape becomes valid without initializing any of its scalar children.
+    test independent_steps_observe_empty_validity_and_silent_repeats {
+        assert eval(empty_set_metadata, value: [_, delta<set<i64>>(), delta<set<i64>>(), delta<set<i64>>(added: [7]), delta<set<i64>>(), _], step: [1, 1, 1, 1, 1, 1]) == [(false, false, false), (true, true, true), (true, false, true), (true, true, true), (true, false, true), (true, false, true)]
+        assert eval(empty_map_metadata, value: [_, delta<map<i64, i64>>(), delta<map<i64, i64>>(), delta<map<i64, i64>>(upsert: [7: 10]), delta<map<i64, i64>>(), _], step: [1, 1, 1, 1, 1, 1]) == [(false, false, false), (true, true, true), (true, false, true), (true, true, true), (true, false, true), (true, false, true)]
+        assert eval(empty_fixed_metadata, value: [_, delta<list<i64, 2>>(), delta<list<i64, 2>>(), delta<list<i64, 2>>(items: [0: 7]), delta<list<i64, 2>>(), _], step: [1, 1, 1, 1, 1, 1]) == [(false, false, false), (true, true, false), (true, false, false), (true, true, false), (true, false, false), (true, false, false)]
+        assert eval(empty_growing_metadata, value: [_, delta<list<i64>>(), delta<list<i64>>(), delta<list<i64>>(items: [0: 7]), delta<list<i64>>(), _], step: [1, 1, 1, 1, 1, 1]) == [(false, false, false), (true, true, true), (true, false, true), (true, true, true), (true, false, true), (true, false, true)]
+        assert eval(empty_tuple_metadata, value: [_, delta<tuple<i64, bool>>(), delta<tuple<i64, bool>>(), delta<tuple<i64, bool>>(items: [0: 7]), delta<tuple<i64, bool>>(), _], step: [1, 1, 1, 1, 1, 1]) == [(false, false, false), (true, true, false), (true, false, false), (true, true, false), (true, false, false), (true, false, false)]
+        assert eval(empty_struct_metadata, value: [_, delta<EmptyDeltaFields>(), delta<EmptyDeltaFields>(), delta<EmptyDeltaFields>(left: 7), delta<EmptyDeltaFields>(), _], step: [1, 1, 1, 1, 1, 1]) == [(false, false, false), (true, true, false), (true, false, false), (true, true, false), (true, false, false), (true, false, false)]
+    }
+
+    test empty_repeats_and_empty_after_data_preserve_modification_time {
+        assert eval(empty_set_time, value: [_, delta<set<i64>>(), delta<set<i64>>(), delta<set<i64>>(added: [7]), delta<set<i64>>(), _], step: [1, 1, 1, 1, 1, 1]) == [_, @1970-01-01T00:00:00.000002Z, @1970-01-01T00:00:00.000002Z, @1970-01-01T00:00:00.000004Z, @1970-01-01T00:00:00.000004Z, @1970-01-01T00:00:00.000004Z]
+        assert eval(empty_map_time, value: [_, delta<map<i64, i64>>(), delta<map<i64, i64>>(), delta<map<i64, i64>>(upsert: [7: 10]), delta<map<i64, i64>>(), _], step: [1, 1, 1, 1, 1, 1]) == [_, @1970-01-01T00:00:00.000002Z, @1970-01-01T00:00:00.000002Z, @1970-01-01T00:00:00.000004Z, @1970-01-01T00:00:00.000004Z, @1970-01-01T00:00:00.000004Z]
+        assert eval(empty_fixed_time, value: [_, delta<list<i64, 2>>(), delta<list<i64, 2>>(), delta<list<i64, 2>>(items: [0: 7]), delta<list<i64, 2>>(), _], step: [1, 1, 1, 1, 1, 1]) == [_, @1970-01-01T00:00:00.000002Z, @1970-01-01T00:00:00.000002Z, @1970-01-01T00:00:00.000004Z, @1970-01-01T00:00:00.000004Z, @1970-01-01T00:00:00.000004Z]
+        assert eval(empty_growing_time, value: [_, delta<list<i64>>(), delta<list<i64>>(), delta<list<i64>>(items: [0: 7]), delta<list<i64>>(), _], step: [1, 1, 1, 1, 1, 1]) == [_, @1970-01-01T00:00:00.000002Z, @1970-01-01T00:00:00.000002Z, @1970-01-01T00:00:00.000004Z, @1970-01-01T00:00:00.000004Z, @1970-01-01T00:00:00.000004Z]
+        assert eval(empty_tuple_time, value: [_, delta<tuple<i64, bool>>(), delta<tuple<i64, bool>>(), delta<tuple<i64, bool>>(items: [0: 7]), delta<tuple<i64, bool>>(), _], step: [1, 1, 1, 1, 1, 1]) == [_, @1970-01-01T00:00:00.000002Z, @1970-01-01T00:00:00.000002Z, @1970-01-01T00:00:00.000004Z, @1970-01-01T00:00:00.000004Z, @1970-01-01T00:00:00.000004Z]
+        assert eval(empty_struct_time, value: [_, delta<EmptyDeltaFields>(), delta<EmptyDeltaFields>(), delta<EmptyDeltaFields>(left: 7), delta<EmptyDeltaFields>(), _], step: [1, 1, 1, 1, 1, 1]) == [_, @1970-01-01T00:00:00.000002Z, @1970-01-01T00:00:00.000002Z, @1970-01-01T00:00:00.000004Z, @1970-01-01T00:00:00.000004Z, @1970-01-01T00:00:00.000004Z]
+    }
+
+    fn empty_held_set(value: set<i64>, step: i64) -> bool {
+        when modified(step) && valid(step, value) { return contains(value, 7) }
+    }
+    fn empty_held_map(value: map<i64, i64>, step: i64) -> i64 {
+        when modified(step) && valid(step, value) {
+            for key, child in items(value) { if key == 7 && valid(child) { return child } }
+        }
+    }
+    fn empty_held_fixed(value: list<i64, 2>, step: i64) -> i64 {
+        when modified(step) && valid(step, value) { if valid(value[0]) { return value[0] } }
+    }
+    fn empty_held_growing(value: list<i64>, step: i64) -> i64 {
+        when modified(step) && valid(step, value) {
+            for index, child in items(value) { if index == 0 && valid(child) { return child } }
+        }
+    }
+    fn empty_held_tuple(value: tuple<i64, bool>, step: i64) -> i64 {
+        when modified(step) && valid(step, value) { if valid(value[0]) { return value[0] } }
+    }
+    fn empty_held_struct(value: EmptyDeltaFields, step: i64) -> i64 {
+        when modified(step) && valid(step, value) { if valid(value.left) { return value.left } }
+    }
+    test empty_after_data_preserves_membership_and_held_payloads {
+        assert eval(empty_held_set, value: [delta<set<i64>>(), delta<set<i64>>(added: [7]), delta<set<i64>>(), _], step: [1, 1, 1, 1]) == [false, true, true, true]
+        assert eval(empty_held_map, value: [delta<map<i64, i64>>(), delta<map<i64, i64>>(upsert: [7: 10]), delta<map<i64, i64>>(), _], step: [1, 1, 1, 1]) == [_, 10, 10, 10]
+        assert eval(empty_held_fixed, value: [delta<list<i64, 2>>(), delta<list<i64, 2>>(items: [0: 7]), delta<list<i64, 2>>(), _], step: [1, 1, 1, 1]) == [_, 7, 7, 7]
+        assert eval(empty_held_growing, value: [delta<list<i64>>(), delta<list<i64>>(items: [0: 7]), delta<list<i64>>(), _], step: [1, 1, 1, 1]) == [_, 7, 7, 7]
+        assert eval(empty_held_tuple, value: [delta<tuple<i64, bool>>(), delta<tuple<i64, bool>>(items: [0: 7]), delta<tuple<i64, bool>>(), _], step: [1, 1, 1, 1]) == [_, 7, 7, 7]
+        assert eval(empty_held_struct, value: [delta<EmptyDeltaFields>(), delta<EmptyDeltaFields>(left: 7), delta<EmptyDeltaFields>(), _], step: [1, 1, 1, 1]) == [_, 7, 7, 7]
+    }
+
+    fn empty_zero_list(value: list<i64, 0>) -> list<i64, 0> => empty_forward(value)
+    fn empty_zero_struct(value: EmptyDeltaZero) -> EmptyDeltaZero => empty_forward(value)
+    fn zero_list_metadata(value: list<i64, 0>, step: i64) -> atomic<tuple<bool, bool, bool>> => empty_metadata(value, step)
+    fn zero_struct_metadata(value: EmptyDeltaZero, step: i64) -> atomic<tuple<bool, bool, bool>> => empty_metadata(value, step)
+    test zero_child_shapes_become_valid_and_all_valid_once {
+        let list_empty = delta<list<i64, 0>>()
+        let struct_empty = delta<EmptyDeltaZero>()
+        assert eval(empty_zero_list, [list_empty, list_empty, _]) == [list_empty, _, _]
+        assert eval(empty_zero_struct, [struct_empty, struct_empty, _]) == [struct_empty, _, _]
+        assert eval(zero_list_metadata, value: [_, list_empty, list_empty, _], step: [1, 1, 1, 1]) == [(false, false, false), (true, true, true), (true, false, true), (true, false, true)]
+        assert eval(zero_struct_metadata, value: [_, struct_empty, struct_empty, _], step: [1, 1, 1, 1]) == [(false, false, false), (true, true, true), (true, false, true), (true, false, true)]
+    }
+
+    fn empty_children(value: EmptyDeltaChildren) -> EmptyDeltaChildren => empty_forward(value)
+    fn children_metadata(value: EmptyDeltaChildren, step: i64) -> atomic<tuple<bool, bool, bool, bool, bool, bool>> {
+        when modified(step) && valid(step, value) {
+            return (modified(value), all_valid(value), valid(value.left), all_valid(value.left), valid(value.right), all_valid(value.right))
+        }
+    }
+    fn observed_children(value: EmptyDeltaChildren, step: i64) -> atomic<tuple<bool, bool, bool, bool, bool, bool>> => children_metadata(value, step)
+    test nested_empty_targets_validate_only_explicit_children {
+        let left = delta<EmptyDeltaChildren>(left: delta<list<i64, 2>>())
+        let right = delta<EmptyDeltaChildren>(right: delta<list<i64, 2>>())
+        let parent = delta<EmptyDeltaChildren>()
+        assert eval(empty_children, [left, left, parent, right, right]) == [left, _, _, right, _]
+        assert eval(observed_children, value: [left, left, parent, right, right], step: [1, 1, 1, 1, 1]) == [
+            (true, false, true, false, false, false),
+            (false, false, true, false, false, false),
+            (false, false, true, false, false, false),
+            (true, true, true, false, true, false),
+            (false, true, true, false, true, false)
+        ]
+        # A parent initialized by E still has invalid children until explicitly targeted.
+        assert eval(empty_children, [parent, left, parent, right]) == [parent, left, _, right]
+    }
+
+    fn nested_fixed(value: list<list<i64, 2>, 2>) -> list<list<i64, 2>, 2> => empty_forward(value)
+    fn nested_tuple(value: tuple<list<i64, 2>, bool>) -> tuple<list<i64, 2>, bool> => empty_forward(value)
+    fn nested_map(value: map<i64, list<i64, 2>>) -> map<i64, list<i64, 2>> => empty_forward(value)
+    fn nested_growing(value: list<list<i64, 2>>) -> list<list<i64, 2>> => empty_forward(value)
+    test nested_empty_entries_retain_their_publication_presence {
+        let fixed = delta<list<list<i64, 2>, 2>>(items: [0: delta<list<i64, 2>>()])
+        let pair = delta<tuple<list<i64, 2>, bool>>(items: [0: delta<list<i64, 2>>()])
+        let map = delta<map<i64, list<i64, 2>>>(upsert: [7: delta<list<i64, 2>>()])
+        let growing = delta<list<list<i64, 2>>>(items: [0: delta<list<i64, 2>>()])
+        assert eval(nested_fixed, [fixed, fixed, delta<list<list<i64, 2>, 2>>()]) == [fixed, _, _]
+        assert eval(nested_tuple, [pair, pair, delta<tuple<list<i64, 2>, bool>>()]) == [pair, _, _]
+        assert eval(nested_map, [map, map, delta<map<i64, list<i64, 2>>>()]) == [map, _, _]
+        assert eval(nested_growing, [growing, growing, delta<list<list<i64, 2>>>()]) == [growing, _, _]
+    }
+
+    fn map_child_metadata(value: map<i64, list<i64, 2>>, step: i64) -> atomic<tuple<i64, bool, bool, bool>> {
+        when modified(step) && valid(step, value) {
+            var count = 0
+            var child_valid = false
+            var child_ready = false
+            for key, child in items(value) {
+                count += 1
+                child_valid = valid(child)
+                child_ready = all_valid(child)
+            }
+            return (count, all_valid(value), child_valid, child_ready)
+        }
+    }
+    fn growing_child_metadata(value: list<list<i64, 2>>, step: i64) -> atomic<tuple<i64, bool, bool, bool>> {
+        when modified(step) && valid(step, value) {
+            var count = 0
+            var child_valid = false
+            var child_ready = false
+            for index, child in items(value) {
+                count += 1
+                child_valid = valid(child)
+                child_ready = all_valid(child)
+            }
+            return (count, all_valid(value), child_valid, child_ready)
+        }
+    }
+    test new_empty_children_keep_membership_without_initializing_descendants {
+        let map_empty = delta<map<i64, list<i64, 2>>>()
+        let map_child = delta<map<i64, list<i64, 2>>>(upsert: [7: delta<list<i64, 2>>()])
+        let growing_empty = delta<list<list<i64, 2>>>()
+        let growing_child = delta<list<list<i64, 2>>>(items: [0: delta<list<i64, 2>>()])
+        assert eval(map_child_metadata, value: [map_empty, map_child, map_child, map_empty], step: [1, 1, 1, 1]) == [(0, true, false, false), (1, true, true, false), (1, true, true, false), (1, true, true, false)]
+        assert eval(growing_child_metadata, value: [growing_empty, growing_child, growing_child, growing_empty], step: [1, 1, 1, 1]) == [(0, true, false, false), (1, true, true, false), (1, true, true, false), (1, true, true, false)]
+    }
+
+    fn empty_twice(step: i64) -> set<i64> {
+        inject out
+        when {
+            out = delta<set<i64>>()
+            out = delta<set<i64>>()
+        }
+    }
+    fn cancellation(step: i64) -> set<i64> {
+        inject out
+        when {
+            insert(out, 7)
+            remove(out, 7)
+        }
+    }
+    fn cancellation_forward(step: i64) -> set<i64> => empty_forward(cancellation(step))
+    fn cancellation_metadata(step: i64) -> atomic<tuple<bool, bool, bool>> => empty_metadata(cancellation(step), step)
+    fn cancellation_forward_metadata(step: i64) -> atomic<tuple<bool, bool, bool>> => empty_metadata(cancellation_forward(step), step)
+    fn retain_member(value: set<i64>, step: i64) -> set<i64> {
+        inject out
+        when modified(step) && valid(step, value) {
+            if step == 1 { out = delta<set<i64>>(added: [9]) }
+            if modified(value) { out = delta_value(value) }
+        }
+    }
+    fn cancellation_existing(step: i64) -> set<i64> => retain_member(cancellation(step), step)
+    fn empty_retained_membership(value: set<i64>, step: i64) -> bool {
+        when modified(step) && valid(step, value) { return contains(value, 9) }
+    }
+    fn cancellation_existing_membership(step: i64) -> bool => empty_retained_membership(cancellation_existing(step), step)
+    fn cancellation_existing_time(step: i64) -> datetime => empty_time(cancellation_existing(step), step)
+    test empty_application_does_not_erase_a_same_cycle_tick {
+        let empty = delta<set<i64>>()
+        assert eval(empty_twice, [1, 2, 3]) == [empty, _, _]
+        assert eval(cancellation, [1, 2, 3]) == [empty, empty, empty]
+        assert eval(cancellation_forward, [1, 2, 3]) == [empty, _, _]
+        assert eval(cancellation_metadata, [1, 2, 3]) == [(true, true, true), (true, true, true), (true, true, true)]
+        assert eval(cancellation_forward_metadata, [1, 2, 3]) == [(true, true, true), (true, false, true), (true, false, true)]
+        assert eval(cancellation_existing, [1, 2, 3]) == [delta<set<i64>>(added: [9]), _, _]
+        assert eval(cancellation_existing_membership, [1, 2, 3]) == [true, true, true]
+        assert eval(cancellation_existing_time, [1, 2, 3]) == [@1970-01-01T00:00:00.000001Z, @1970-01-01T00:00:00.000001Z, @1970-01-01T00:00:00.000001Z]
+    }
+
+    fn revalidating_child(step: i64) -> map<i64, list<i64, 2>> {
+        inject out
+        when {
+            if step == 1 {
+                out = delta<map<i64, list<i64, 2>>>(upsert: [1: delta<list<i64, 2>>(), 2: delta<list<i64, 2>>(items: [0: 9])])
+            } else if step == 2 { invalidate(out, 1) } else { out = delta<map<i64, list<i64, 2>>>(upsert: [1: delta<list<i64, 2>>()]) }
+        }
+    }
+    # The receiving output keeps its valid child while the source child is invalidated.
+    fn skip_child_invalidation(value: map<i64, list<i64, 2>>, step: i64) -> map<i64, list<i64, 2>> {
+        when modified(step) && valid(step, value) {
+            if step != 2 { if modified(value) { return delta_value(value) } }
+        }
+    }
+    fn retained_child(step: i64) -> map<i64, list<i64, 2>> => skip_child_invalidation(revalidating_child(step), step)
+    fn revalidated_child_metadata(value: map<i64, list<i64, 2>>, step: i64) -> atomic<tuple<bool, bool, bool, bool, bool, bool>> {
+        when modified(step) && valid(step, value) {
+            for key, child in items(value) {
+                if key == 1 {
+                    return (valid(child), modified(child), all_valid(child),
+                        last_modified(child) < @1970-01-01T00:00:00.000001Z,
+                        last_modified(child) == @1970-01-01T00:00:00.000001Z,
+                        last_modified(child) == @1970-01-01T00:00:00.000003Z)
+                }
+            }
+        }
+    }
+    fn source_child_state(step: i64) -> atomic<tuple<bool, bool, bool, bool, bool, bool>> => revalidated_child_metadata(revalidating_child(step), step)
+    fn retained_child_state(step: i64) -> atomic<tuple<bool, bool, bool, bool, bool, bool>> => revalidated_child_metadata(retained_child(step), step)
+    fn revalidation_only(value: map<i64, list<i64, 2>>, step: i64) -> map<i64, list<i64, 2>> {
+        when modified(step) && valid(step, value) {
+            if step == 3 { if modified(value) { return delta_value(value) } }
+        }
+    }
+    fn source_revalidation_delta(step: i64) -> map<i64, list<i64, 2>> => revalidation_only(revalidating_child(step), step)
+    test invalidated_child_revalidates_but_valid_receiving_child_does_not_tick {
+        let first = delta<map<i64, list<i64, 2>>>(upsert: [1: delta<list<i64, 2>>(), 2: delta<list<i64, 2>>(items: [0: 9])])
+        assert eval(source_child_state, [1, 2, 3, 4]) == [(true, true, false, false, true, false), (false, false, false, true, false, false), (true, true, false, false, false, true), (true, false, false, false, false, true)]
+        assert eval(retained_child_state, [1, 2, 3, 4]) == [(true, true, false, false, true, false), (true, false, false, false, true, false), (true, false, false, false, true, false), (true, false, false, false, true, false)]
+        assert eval(retained_child, [1, 2, 3, 4]) == [first, _, _, _]
+        assert eval(source_revalidation_delta, [1, 2, 3, 4]) == [_, _, delta<map<i64, list<i64, 2>>>(upsert: [1: delta<list<i64, 2>>()]), _]
+    }
+
+    test invalid_nonempty_instructions_are_not_empty_publications {
+        assert raises("eval.input_delta_profile") { eval(empty_set, [delta<set<i64>>(), delta<set<i64>>(removed: [7])]) }
+        assert raises("eval.input_delta_profile") { eval(empty_set, [delta<set<i64>>(), delta<set<i64>>(added: [7]), delta<set<i64>>(added: [7])]) }
+        assert raises("eval.input_delta_profile") { eval(empty_map, [delta<map<i64, i64>>(), delta<map<i64, i64>>(remove: [7])]) }
+        assert raises("eval.input_delta_profile") { eval(empty_growing, [delta<list<i64>>(), delta<list<i64>>(items: [1: 7])]) }
+    }
+
+    fn empty_atomic(value: atomic<list<i64>>) -> atomic<list<i64>> => empty_forward(value)
+    fn empty_atomic_set(value: atomic<set<i64>>) -> atomic<set<i64>> => empty_forward(value)
+    fn empty_atomic_map(value: atomic<map<i64, i64>>) -> atomic<map<i64, i64>> => empty_forward(value)
+    fn empty_atomic_struct(value: atomic<EmptyDeltaZero>) -> atomic<EmptyDeltaZero> => empty_forward(value)
+    fn empty_rolling(value: rolling<list<i64>, 2>) -> rolling<list<i64>, 2> => empty_forward(value)
+    fn empty_scalar<T>(value: T) -> T => empty_forward(value)
+    test complete_empty_arrivals_and_equal_scalars_still_tick {
+        let empty: list<i64> = []
+        assert eval(empty_atomic, [empty, empty, _]) == [empty, empty, _]
+        let empty_set_value = set<i64>(items: [])
+        let empty_map_value = map<i64, i64>(items: [])
+        let empty_struct_value = EmptyDeltaZero()
+        assert eval(empty_atomic_set, [empty_set_value, empty_set_value, _]) == [empty_set_value, empty_set_value, _]
+        assert eval(empty_atomic_map, [empty_map_value, empty_map_value, _]) == [empty_map_value, empty_map_value, _]
+        assert eval(empty_atomic_struct, [empty_struct_value, empty_struct_value, _]) == [empty_struct_value, empty_struct_value, _]
+        assert eval(empty_rolling, [empty, empty, _]) == [empty, empty, _]
+        assert eval(empty_scalar, [0, 0, _]) == [0, 0, _]
+        assert eval(empty_scalar, [false, false, _]) == [false, false, _]
+        assert eval(empty_scalar, ["", "", _]) == ["", "", _]
+    }
+
+    fn empty_replay_context(step: i64) { when {} }
+    fn replay_empty_set(step: i64, const values: list<TimedValue<set<i64>>>) -> set<i64> {
+        empty_replay_context(step)
+        replay(values)
+    }
+    test timed_replay_applies_empty_entries_without_inventing_ticks {
+        var values: list<TimedValue<set<i64>>> = []
+        push(values, TimedValue<set<i64>>(time: @1970-01-01T00:00:00.000001Z, value: delta<set<i64>>()))
+        push(values, TimedValue<set<i64>>(time: @1970-01-01T00:00:00.000002Z, value: delta<set<i64>>()))
+        push(values, TimedValue<set<i64>>(time: @1970-01-01T00:00:00.000003Z, value: delta<set<i64>>(added: [7])))
+        push(values, TimedValue<set<i64>>(time: @1970-01-01T00:00:00.000004Z, value: delta<set<i64>>()))
+        assert eval(replay_empty_set, step: [1, 1, 1, 1, 1], values: values) == [delta<set<i64>>(), _, delta<set<i64>>(added: [7]), _, _]
+    }
+}
