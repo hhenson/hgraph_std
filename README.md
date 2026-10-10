@@ -16,6 +16,7 @@ no Python, C++ or Rust implementation and selects no target provider.
 - [Bytes values, publications and independent retention](hgl/hgraph/tests/bytes_values.hgl)
 - [Any boxes, exact payload identity and independent retention](hgl/hgraph/tests/any_values.hgl)
 - [Native atomic scalar fixture and shared values tests](docs/native-atomic-values.md)
+- [Held references to bytes, Any and native owning leaves](docs/reference-leaf-values.md)
 - [Native support](docs/native-support.md)
 
 The [language specification](https://github.com/hhenson/hgraph_spec) defines
