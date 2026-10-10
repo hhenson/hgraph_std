@@ -14,6 +14,7 @@ no Python, C++ or Rust implementation and selects no target provider.
 - [Behaviour tests](hgl/hgraph/tests)
 - [Required payload-read failures and retention controls](hgl/hgraph/tests/unset_required_read_values.hgl)
 - [Bytes values, publications and independent retention](hgl/hgraph/tests/bytes_values.hgl)
+- [Any boxes, exact payload identity and independent retention](hgl/hgraph/tests/any_values.hgl)
 - [Native support](docs/native-support.md)
 
 The [language specification](https://github.com/hhenson/hgraph_spec) defines
