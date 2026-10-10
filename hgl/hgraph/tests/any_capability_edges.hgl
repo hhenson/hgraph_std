@@ -1,0 +1,90 @@
+module hgraph.std part any_capability_edges_tests
+
+# Ordinary storage only: a structural delta is not a new temporal payload.
+struct AnyCapabilityDeltaField { change: delta<list<i64, 2>> }
+
+test {
+    const fn any_capability_set_key(key: any) -> bool {
+        let members: set<any> = set<any>(items: [key])
+        return any(members) != any(0)
+    }
+    const fn any_capability_map_key(key: any) -> bool {
+        let entries: map<any, i64> = map<any, i64>(items: [any(): 0, key: 1])
+        return any(entries) != any(0)
+    }
+
+    test populated_empty_zone_list_boxes_still_require_type_order {
+        let zones: list<timezone> = []
+        let populated: any = any(zones)
+        assert len(zones) == 0
+        # list order requires timezone order; emptiness cannot supply it.
+        assert raises("value.capability") { assert populated < populated }
+        assert raises("value.capability") { assert populated <= populated }
+        assert raises("value.capability") { assert populated > populated }
+        assert raises("value.capability") { assert populated >= populated }
+        # Zone equality/hash are admitted, independently of absent order.
+        assert populated == any(zones)
+        assert any_capability_set_key(populated)
+    }
+
+    test populated_empty_delta_list_boxes_lack_equality_and_key_hash {
+        let changes: list<delta<list<i64, 2>>> = []
+        let populated: any = any(changes)
+        assert len(changes) == 0
+        # Capability depends on the element type even with no stored elements.
+        assert raises("value.capability") { assert populated == populated }
+        assert raises("value.capability") { assert populated != populated }
+        assert raises("value.capability") { assert any_capability_set_key(populated) }
+        assert raises("value.capability") { assert any_capability_map_key(populated) }
+        assert populated != any(0)
+    }
+
+    test boxed_owning_delta_containers_cannot_become_keys {
+        let change: delta<list<i64, 2>> = delta<list<i64, 2>>(items: [1: 7])
+        var changes: list<delta<list<i64, 2>>> = []
+        push(changes, change)
+        let list_box: any = any(changes)
+        let tuple_box: any = any((change, 0))
+        let struct_box: any = any(AnyCapabilityDeltaField(change: change))
+        assert len(changes) == 1
+        # Storage/boxing retain the delta without inventing its Eq/hash.
+        assert list_box != tuple_box
+        assert tuple_box != struct_box
+        assert raises("value.capability") { assert any_capability_set_key(list_box) }
+        assert raises("value.capability") { assert any_capability_set_key(tuple_box) }
+        assert raises("value.capability") { assert any_capability_set_key(struct_box) }
+        # The preceding empty key has another type; that cannot waive ANY-5.
+        assert raises("value.capability") { assert any_capability_map_key(tuple_box) }
+    }
+
+    test empty_any_and_different_type_comparisons_keep_their_contract {
+        let zones: list<timezone> = []
+        let changes: list<delta<list<i64, 2>>> = []
+        let ordered_empty_box: any = any()
+        let zone_box: any = any(zones)
+        let delta_box: any = any(changes)
+        assert ordered_empty_box == any()
+        assert any_capability_set_key(ordered_empty_box)
+        assert any_capability_map_key(any(0))
+        # Empty Any is separate from a populated box holding an empty list.
+        assert ordered_empty_box < zone_box
+        assert ordered_empty_box != delta_box
+        assert ordered_empty_box < delta_box
+        assert ordered_empty_box <= delta_box
+        assert delta_box > ordered_empty_box
+        assert delta_box >= ordered_empty_box
+        assert !(delta_box < ordered_empty_box)
+        assert !(delta_box <= ordered_empty_box)
+        assert !(ordered_empty_box > delta_box)
+        assert !(ordered_empty_box >= delta_box)
+        # Different contained types compare without asking for either type's
+        # missing same-type equality/order. Key construction still checks caps.
+        assert zone_box != delta_box
+        assert !(zone_box == delta_box)
+        assert !(zone_box < delta_box)
+        assert !(zone_box <= delta_box)
+        assert !(zone_box > delta_box)
+        assert !(zone_box >= delta_box)
+        assert raises("value.capability") { assert any_capability_map_key(delta_box) }
+    }
+}
