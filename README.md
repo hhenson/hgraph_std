@@ -23,6 +23,7 @@ no Python, C++ or Rust implementation and selects no target provider.
 - [Child projections through references during graph wiring](hgl/hgraph/tests/reference_projection_values.hgl)
 - [Structural consumers following held REF designations](docs/reference-structural-values.md)
 - [Held references to bytes, Any and native owning leaves](docs/reference-leaf-values.md)
+- [Owned REF output routes and exported child trees](docs/reference-owner-export-values.md)
 - [Native support](docs/native-support.md)
 
 The [language specification](https://github.com/hhenson/hgraph_spec) defines
