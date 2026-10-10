@@ -22,9 +22,10 @@ same-type capabilities; key use still requires equality/hash. Constructors
 and assertions execute in test bodies, so optional folding must preserve
 execution failures rather than reject the tests during checking.
 
-Required constant capability failures remain checking errors without a
-catalogued dedicated source code. The existing delta constructor catalogue
-separately covers `delta.index_bounds`, `delta.argument_name`,
+Required constant capability failures use category `type` and
+`value.constant_capability` under the
+[source diagnostic contract](https://github.com/hhenson/hgraph_spec/blob/731c303aa6b31beb80caaee37c6a7554f944fead/language/docs/design/error-catalogue.md).
+The delta constructor catalogue separately covers `delta.index_bounds`, `delta.argument_name`,
 `delta.entry_constant` and `delta.entry_type`; those formation failures precede
 executed operations. The suite adds no source-rejection annotations or new
 error code, and admits no ordinary delta field/index inspection.
