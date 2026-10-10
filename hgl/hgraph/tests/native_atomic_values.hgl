@@ -1,0 +1,330 @@
+module hgraph.std part native_atomic_values_tests
+
+struct NativeFields { left: Token
+    right: Token }
+struct NativeSnapshot { value: Token
+    items: list<Token> }
+struct NativeEntry { value: Token }
+
+test {
+    fn native_scalar(value: Token) -> Token => pass_through(value)
+    fn native_atomic(value: atomic<Token>) -> Token => pass_through(value)
+    fn native_atomic_result(value: Token) -> atomic<Token> => pass_through(value)
+    fn native_make(value: str) -> Token { when { return token(value) } }
+    fn native_observe(value: Token) -> str { when { return token_text(value) } }
+    fn native_round_trip(value: str) -> str => native_observe(pass_through(native_make(value)))
+    fn native_other_observe(value: TokenOther) -> str { when { return token_other_text(value) } }
+    fn native_text_observe(value: TextOnly) -> str { when { return text_only_text(value) } }
+    fn native_text_transport(value: TextOnly) -> str => native_text_observe(pass_through(value))
+
+    test native_leaf_publications_keep_empty_equal_distinct_and_silence {
+        let empty: Token = token("")
+        let first: Token = token("a")
+        let second: Token = token("b")
+        assert eval(native_scalar, [_, empty, empty, first, _, first, second, _]) == [_, empty, empty, first, _, first, second, _]
+        assert eval(native_scalar, [_, _, _]) == [_, _, _]
+        assert eval(native_scalar, []) == []
+        assert eval(native_round_trip, ["", _, "a", "a", "b", _]) == ["", _, "a", "a", "b", _]
+    }
+
+    test native_atomic_and_delta_normalization_preserve_one_leaf {
+        let first: delta<atomic<Token>> = token("a")
+        let empty: delta<Token> = token("")
+        assert eval(native_atomic, [first, _, first, empty]) == [first, _, first, empty]
+        assert eval(native_atomic_result, [empty, empty, _, first]) == [empty, empty, _, first]
+    }
+
+    test native_ordinary_helpers_and_replacement_keep_retained_copies {
+        var text: str = "a"
+        var value: Token = token(text)
+        let retained: Token = value
+        let observed: str = token_text(value)
+        text = "b"
+        value = token(text)
+        assert token_text(retained) == "a"
+        assert observed == "a"
+        assert retained == token("a")
+        assert retained != value
+        assert token("") < retained
+        assert retained < value
+        assert value > retained
+        assert retained <= token("a")
+        assert retained >= token("a")
+        assert eval(native_scalar, [retained, value, retained]) == [token("a"), token("b"), token("a")]
+    }
+
+    test native_text_only_transport_requires_copy_and_text_capabilities {
+        var original: TextOnly = text_only("a")
+        let retained: TextOnly = original
+        original = text_only("b")
+        assert text_only_text(retained) == "a"
+        assert eval(native_text_transport, [_, retained, retained, _, original, text_only(""), _]) == [_, "a", "a", _, "b", "", _]
+        assert eval(native_other_observe, [token_other("a"), _, token_other("")]) == ["a", _, ""]
+    }
+
+    fn native_fixed(value: list<Token, 2>) -> list<Token, 2> => pass_through(value)
+    fn native_growing(value: list<Token>) -> list<Token> => pass_through(value)
+    fn native_tuple(value: tuple<Token, i64>) -> tuple<Token, i64> => pass_through(value)
+    fn native_fields(value: NativeFields) -> NativeFields => pass_through(value)
+    fn native_map_child(value: map<i64, Token>) -> map<i64, Token> => pass_through(value)
+
+    test native_sparse_children_preserve_omissions_and_native_payloads {
+        let first: Token = token("a")
+        let empty: Token = token("")
+        assert eval(native_fixed, [delta<list<Token, 2>>(items: [1: first]), _, delta<list<Token, 2>>(items: [0: empty]), delta<list<Token, 2>>(items: [1: first])]) == [
+            delta<list<Token, 2>>(items: [1: first]), _, delta<list<Token, 2>>(items: [0: empty]), delta<list<Token, 2>>(items: [1: first])
+        ]
+        assert eval(native_tuple, [delta<tuple<Token, i64>>(items: [0: empty]), delta<tuple<Token, i64>>(items: [1: 7]), _]) == [
+            delta<tuple<Token, i64>>(items: [0: empty]), delta<tuple<Token, i64>>(items: [1: 7]), _
+        ]
+        assert eval(native_fields, [delta<NativeFields>(left: first), delta<NativeFields>(right: empty), delta<NativeFields>(left: first)]) == [
+            delta<NativeFields>(left: first), delta<NativeFields>(right: empty), delta<NativeFields>(left: first)
+        ]
+        assert eval(native_map_child, [delta<map<i64, Token>>(upsert: [7: first]), delta<map<i64, Token>>(upsert: [7: first]), _, delta<map<i64, Token>>(remove: [7])]) == [
+            delta<map<i64, Token>>(upsert: [7: first]), delta<map<i64, Token>>(upsert: [7: first]), _, delta<map<i64, Token>>(remove: [7])
+        ]
+    }
+
+    test native_growing_children_survive_shrink_and_reinsert {
+        let first: Token = token("a")
+        let empty: Token = token("")
+        assert eval(native_growing, [
+            delta<list<Token>>(items: [0: first, 1: empty]), _,
+            delta<list<Token>>(items: [1: first]), delta<list<Token>>(remove: [1]),
+            delta<list<Token>>(items: [1: empty])
+        ]) == [
+            delta<list<Token>>(items: [1: empty, 0: first]), _,
+            delta<list<Token>>(items: [1: first]), delta<list<Token>>(remove: [1]),
+            delta<list<Token>>(items: [1: empty])
+        ]
+    }
+
+    fn native_members(value: set<Token>) -> set<Token> => pass_through(value)
+    fn native_keys(value: map<Token, i64>) -> map<Token, i64> => pass_through(value)
+    test native_keys_match_reconstructed_values_and_preserve_lifecycle {
+        let first: Token = token("a")
+        let equal_first: Token = token("a")
+        let second: Token = token("b")
+        assert eval(native_members, [delta<set<Token>>(added: [first, second]), _, delta<set<Token>>(removed: [equal_first]), delta<set<Token>>(added: [equal_first])]) == [
+            delta<set<Token>>(added: [second, equal_first]), _, delta<set<Token>>(removed: [first]), delta<set<Token>>(added: [first])
+        ]
+        assert eval(native_keys, [delta<map<Token, i64>>(upsert: [first: 1, second: 2]), delta<map<Token, i64>>(upsert: [equal_first: 3]), delta<map<Token, i64>>(remove: [equal_first]), delta<map<Token, i64>>(upsert: [first: 4])]) == [
+            delta<map<Token, i64>>(upsert: [second: 2, equal_first: 1]), delta<map<Token, i64>>(upsert: [first: 3]), delta<map<Token, i64>>(remove: [first]), delta<map<Token, i64>>(upsert: [equal_first: 4])
+        ]
+    }
+
+    fn native_complete(value: atomic<NativeSnapshot>) -> atomic<NativeSnapshot> => pass_through(value)
+    test native_complete_compounds_retain_ordinary_children {
+        var items: list<Token> = []
+        push(items, token("a"))
+        var source: NativeSnapshot = NativeSnapshot(value: token("a"), items: items)
+        let retained: NativeSnapshot = source
+        source.value = token("b")
+        push(source.items, token(""))
+        items = []
+        assert eval(native_complete, [retained, _, source, retained]) == [
+            NativeSnapshot(value: token("a"), items: [token("a")]), _,
+            NativeSnapshot(value: token("b"), items: [token("a"), token("")]),
+            NativeSnapshot(value: token("a"), items: [token("a")])
+        ]
+    }
+
+    fn native_arrivals(value: rolling<Token, 2>) -> rolling<Token, 2> => pass_through(value)
+    test native_rolling_arrivals_keep_equal_and_empty_values {
+        let first: Token = token("a")
+        let empty: Token = token("")
+        assert eval(native_arrivals, [_, empty, empty, _, first, first, token("b"), _]) == [_, empty, empty, _, first, first, token("b"), _]
+    }
+
+    fn native_box(value: Token) -> any { when { return any(value) } }
+    fn native_box_transport(value: Token) -> any => pass_through(native_box(value))
+    fn native_boxed(value: any) -> any => pass_through(value)
+    fn native_box_members(value: set<any>) -> set<any> => pass_through(value)
+    test native_boxing_preserves_canonical_identity_and_capabilities {
+        let first: any = any(token("a"))
+        let other: any = any(token_other("a"))
+        assert first == any(token("a"))
+        assert first != other
+        assert !(first < other)
+        assert !(first <= other)
+        assert !(first > other)
+        assert !(first >= other)
+        assert first < any(token("b"))
+        assert eval(native_box_transport, [token("a"), _, token("a"), token("")]) == [first, _, first, any(token(""))]
+        assert eval(native_boxed, [first, other, _, first]) == [first, other, _, first]
+        assert eval(native_box_members, [delta<set<any>>(added: [first, other]), delta<set<any>>(removed: [any(token("a"))])]) == [
+            delta<set<any>>(added: [other, any(token("a"))]), delta<set<any>>(removed: [first])
+        ]
+    }
+
+    fn native_box_equal(value: any) -> bool { when { return value == value } }
+    fn native_box_less(value: any) -> bool { when { return value < value } }
+    const fn native_box_equal_value(first: any, second: any) -> bool { return first == second }
+    test native_missing_boxed_capabilities_fail_when_executed {
+        let opaque: any = any(text_only("a"))
+        assert opaque != any(token("a"))
+        assert raises("value.capability") { eval(native_box_equal, [opaque]) }
+        assert raises("value.capability") { eval(native_box_less, [opaque]) }
+        assert raises("value.capability") { assert native_box_equal_value(opaque, opaque) }
+        assert raises("value.capability") {
+            let members: set<any> = set<any>(items: [opaque])
+            assert any(members) != any(0)
+        }
+        var retained: any = any()
+        assert raises("value.capability") {
+            retained = any(token("a"))
+            assert native_box_equal_value(opaque, opaque)
+            retained = any(token("b"))
+        }
+        assert retained == any(token("a"))
+    }
+
+    fn native_global_owned_copy(value: Token) -> Token {
+        inject global_state
+        when {
+            set(global_state, "native.owned", value)
+            let retained: Token = get(global_state, "native.owned")
+            set(global_state, "native.owned", token("replacement"))
+            return retained
+        }
+    }
+    fn native_global_local_replacement(value: Token) -> bool {
+        inject global_state
+        when {
+            set(global_state, "native.local", value)
+            var local: Token = get(global_state, "native.local")
+            let retained: Token = local
+            local = token("replacement")
+            let stored: Token = get(global_state, "native.local")
+            return retained == value && stored == value && local == token("replacement")
+        }
+    }
+    fn native_global_copy(value: Token) -> Token {
+        inject global_state
+        when {
+            set(global_state, "native.saved", NativeEntry(value: value))
+            var entry: NativeEntry = get(global_state, "native.saved")
+            let retained: NativeEntry = NativeEntry(value: entry.value)
+            entry.value = token("replacement")
+            return retained.value
+        }
+    }
+    fn native_global_read_copy(value: Token) -> Token {
+        inject global_state
+        when {
+            set(global_state, "native.observed", NativeEntry(value: value))
+            var retained: NativeEntry = NativeEntry(value: token("initial"))
+            if true {
+                let observed: NativeEntry = get(global_state, "native.observed")
+                retained = NativeEntry(value: observed.value)
+            }
+            set(global_state, "native.observed", NativeEntry(value: token("replacement")))
+            return retained.value
+        }
+    }
+    test native_global_owning_and_constructor_copies_survive_replacement {
+        let first: Token = token("a")
+        let empty: Token = token("")
+        assert eval(native_global_owned_copy, [first, _, first, empty]) == [first, _, first, empty]
+        assert eval(native_global_local_replacement, [empty, _, first, first]) == [true, _, true, true]
+        assert eval(native_global_copy, [first, _, first, empty]) == [first, _, first, empty]
+        assert eval(native_global_read_copy, [empty, _, first, first]) == [empty, _, first, first]
+    }
+
+    fn native_replay_context(tick: i64) { when { } }
+    fn native_replayed(tick: i64, const samples: list<TimedValue<Token>>) -> atomic<Token> {
+        native_replay_context(tick)
+        replay(samples)
+    }
+    fn native_text_replayed(tick: i64, const samples: list<TimedValue<TextOnly>>) -> str {
+        native_replay_context(tick)
+        native_text_observe(pass_through(replay(samples)))
+    }
+    test native_timed_captures_retain_values_and_times_across_fresh_runs {
+        var source: Token = token("a")
+        var sample: TimedValue<atomic<Token>> = TimedValue<atomic<Token>>(time: @1970-01-01T00:00:00.000001Z, value: source)
+        var samples: list<TimedValue<Token>> = []
+        push(samples, sample)
+        source = token("b")
+        sample.value = source
+        sample.time = @1970-01-01T00:00:00.000003Z
+        push(samples, sample)
+        sample.value = token("")
+        sample.time = @1970-01-01T00:00:00.000004Z
+        push(samples, sample)
+        source = token("changed")
+        sample.value = source
+        assert eval(native_replayed, tick: [1, 1, 1, 1, 1], samples: samples) == [token("a"), _, token("b"), token(""), _]
+        assert eval(native_replayed, tick: [1, 1, 1, 1, 1], samples: samples) == [token("a"), _, token("b"), token(""), _]
+        let empty: list<TimedValue<Token>> = []
+        assert eval(native_replayed, tick: [1, 1], samples: empty) == [_, _]
+        var text_samples: list<TimedValue<TextOnly>> = []
+        var text_sample: TimedValue<TextOnly> = TimedValue<TextOnly>(time: @1970-01-01T00:00:00.000001Z, value: text_only("a"))
+        push(text_samples, text_sample)
+        text_sample.value = text_only("b")
+        text_sample.time = @1970-01-01T00:00:00.000003Z
+        push(text_samples, text_sample)
+        text_sample.value = text_only("changed")
+        assert eval(native_text_replayed, tick: [1, 1, 1, 1], samples: text_samples) == ["a", _, "b", _]
+        assert eval(native_text_replayed, tick: [1, 1, 1, 1], samples: text_samples) == ["a", _, "b", _]
+    }
+
+    fn native_record_matches(trigger: i64, const expected: list<TimedValue<Token>>) -> bool {
+        inject global_state
+        when {
+            let captured: list<TimedValue<Token>> = get(global_state, "native.recording")
+            if len(captured) != len(expected) { return false }
+            var index: i64 = 0
+            while index < len(expected) {
+                if captured[index].time != expected[index].time { return false }
+                if captured[index].value != expected[index].value { return false }
+                index += 1
+            }
+            return true
+        }
+    }
+    fn native_recorded(value: Token, trigger: i64, const expected: list<TimedValue<Token>>) -> bool {
+        record(pass_through(value), "native.recording")
+        native_record_matches(trigger, expected)
+    }
+    test native_recording_keeps_equal_ticks_exact_times_and_fresh_empty_runs {
+        var expected: list<TimedValue<Token>> = []
+        push(expected, TimedValue<Token>(time: @1970-01-01T00:00:00.000001Z, value: token("")))
+        push(expected, TimedValue<Token>(time: @1970-01-01T00:00:00.000003Z, value: token("")))
+        push(expected, TimedValue<Token>(time: @1970-01-01T00:00:00.000004Z, value: token("a")))
+        push(expected, TimedValue<Token>(time: @1970-01-01T00:00:00.000005Z, value: token("b")))
+        assert eval(native_recorded, value: [token(""), _, token(""), token("a"), token("b")], trigger: [_, _, _, _, _, 1], expected: expected) == [_, _, _, _, _, true]
+        assert eval(native_recorded, value: [token(""), _, token(""), token("a"), token("b")], trigger: [_, _, _, _, _, 1], expected: expected) == [_, _, _, _, _, true]
+        let empty: list<TimedValue<Token>> = []
+        assert eval(native_recorded, value: [_, _, _], trigger: [_, _, _, 1], expected: empty) == [_, _, _, true]
+        assert eval(native_recorded, value: [], trigger: [_, 1], expected: empty) == [_, true]
+    }
+
+    fn native_text_record_matches(trigger: i64, const expected: list<TimedValue<TextOnly>>) -> bool {
+        inject global_state
+        when {
+            let captured: list<TimedValue<TextOnly>> = get(global_state, "native.text.recording")
+            if len(captured) != len(expected) { return false }
+            var index: i64 = 0
+            while index < len(expected) {
+                if captured[index].time != expected[index].time { return false }
+                if text_only_text(captured[index].value) != text_only_text(expected[index].value) { return false }
+                index += 1
+            }
+            return true
+        }
+    }
+    fn native_text_recorded(value: TextOnly, trigger: i64, const expected: list<TimedValue<TextOnly>>) -> bool {
+        record(pass_through(value), "native.text.recording")
+        native_text_record_matches(trigger, expected)
+    }
+    test native_text_only_recording_uses_no_optional_capabilities {
+        var expected: list<TimedValue<TextOnly>> = []
+        push(expected, TimedValue<TextOnly>(time: @1970-01-01T00:00:00.000001Z, value: text_only("a")))
+        push(expected, TimedValue<TextOnly>(time: @1970-01-01T00:00:00.000003Z, value: text_only("a")))
+        push(expected, TimedValue<TextOnly>(time: @1970-01-01T00:00:00.000004Z, value: text_only("")))
+        assert eval(native_text_recorded, value: [text_only("a"), _, text_only("a"), text_only("")], trigger: [_, _, _, _, 1], expected: expected) == [_, _, _, _, true]
+        let empty: list<TimedValue<TextOnly>> = []
+        assert eval(native_text_recorded, value: [_, _], trigger: [_, _, 1], expected: empty) == [_, _, true]
+    }
+}
