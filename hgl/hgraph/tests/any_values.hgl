@@ -1,0 +1,360 @@
+module hgraph.std part any_values_tests
+
+struct AnyPayload { value: i64
+    items: list<i64> }
+struct AnyNested { child: AnyPayload
+    label: str }
+struct AnyChain { value: i64
+    items: list<i64>
+    next: atomic<AnyChain> = null }
+abstract struct AnyFamily { label: str }
+struct AnyFirst: AnyFamily { items: list<i64>
+    mark: i64 = null }
+struct AnySecond: AnyFamily { items: list<i64>
+    mark: i64 = null }
+struct AnyFields { left: any
+    right: any }
+struct AnySnapshot { value: any
+    items: list<any> }
+
+test {
+    fn any_scalar(value: any) -> any => pass_through(value)
+    fn any_atomic(value: atomic<any>) -> any => pass_through(value)
+    fn any_atomic_result(value: any) -> atomic<any> => pass_through(value)
+
+    test any_whole_boxes_preserve_empty_equal_mixed_and_silent_publications {
+        let empty: any = any()
+        assert eval(any_scalar, [_, empty, empty, any(0), any(false), _, any(""), any(""), any(bytes()), _]) == [
+            _, empty, empty, any(0), any(false), _, any(""), any(""), any(bytes()), _
+        ]
+        assert eval(any_scalar, [_, _, _]) == [_, _, _]
+        assert eval(any_scalar, []) == []
+    }
+
+    test any_atomic_delta_and_flattened_boxing_keep_one_identity {
+        let value: delta<atomic<any>> = any(7)
+        let empty: delta<any> = any()
+        assert any(any(7)) == value
+        assert any(any()) == empty
+        assert eval(any_atomic, [value, _, value, empty]) == [value, _, value, empty]
+        assert eval(any_atomic_result, [empty, empty, _, value]) == [empty, empty, _, value]
+    }
+
+    test any_comparisons_keep_exact_contained_types_and_partial_order {
+        assert any() == any()
+        assert any() != any(0)
+        assert any(0) != any(false)
+        assert any(0) != any(0.0)
+        assert any(7) == any(7)
+        assert any(7) < any(8)
+        assert any() < any(false)
+        assert any(false) > any()
+        assert !(any(0) < any(false))
+        assert !(any(0) <= any(false))
+        assert !(any(0) > any(false))
+        assert !(any(0) >= any(false))
+        assert any(bytes([127])) < any(bytes([128]))
+    }
+
+    const fn any_two_items() -> list<i64> { return [1, 2] }
+    const fn any_no_items() -> list<i64> { return [] }
+    fn any_box_integer(value: i64) -> any {
+        when { return any(value) }
+    }
+    fn any_box_list(value: atomic<list<i64>>) -> any {
+        when { return any(value) }
+    }
+
+    test any_construction_retains_readable_scalar_and_complete_list_payloads {
+        assert eval(any_box_integer, [0, _, 0, 7]) == [any(0), _, any(0), any(7)]
+        assert eval(any_box_list, [[1, 2], [], _, [1, 2]]) == [
+            any(any_two_items()), any(any_no_items()), _, any(any_two_items())
+        ]
+    }
+
+    test any_owning_boxes_isolate_nested_mutable_ordinary_values {
+        var source: AnyNested = AnyNested(child: AnyPayload(value: 1, items: [1]), label: "first")
+        var box: any = any(source)
+        let retained: any = any(box)
+        source.child.value = 2
+        push(source.child.items, 2)
+        source.label = "changed"
+        box = any(source)
+        assert retained == any(AnyNested(child: AnyPayload(value: 1, items: [1]), label: "first"))
+        assert retained != box
+        assert eval(any_scalar, [retained, box, _, retained]) == [
+            any(AnyNested(child: AnyPayload(value: 1, items: [1]), label: "first")),
+            any(AnyNested(child: AnyPayload(value: 2, items: [1, 2]), label: "changed")), _,
+            any(AnyNested(child: AnyPayload(value: 1, items: [1]), label: "first"))
+        ]
+    }
+
+    test any_recursive_payloads_retain_depth_and_optional_presence {
+        var leaf: AnyChain = AnyChain(value: 2, items: [2])
+        var root: AnyChain = AnyChain(value: 1, items: [1], next: leaf)
+        let deep: any = any(root)
+        leaf.value = 9
+        push(leaf.items, 9)
+        root.value = 0
+        root.next = null
+        assert deep == any(AnyChain(value: 1, items: [1], next: AnyChain(value: 2, items: [2])))
+        assert eval(any_scalar, [deep, any(root), _, deep]) == [
+            any(AnyChain(value: 1, items: [1], next: AnyChain(value: 2, items: [2]))),
+            any(AnyChain(value: 0, items: [1])), _,
+            any(AnyChain(value: 1, items: [1], next: AnyChain(value: 2, items: [2])))
+        ]
+    }
+
+    test any_family_payloads_keep_concrete_members_and_optional_fields {
+        var source: AnyFirst = AnyFirst(label: "same", items: [1], mark: 0)
+        let first: AnyFamily = source
+        let retained: any = any(first)
+        let other: AnyFamily = AnySecond(label: "same", items: [1], mark: 0)
+        let unset: AnyFamily = AnyFirst(label: "same", items: [1])
+        push(source.items, 2)
+        source.label = "changed"
+        let changed: AnyFamily = source
+        assert retained != any(other)
+        assert retained != any(unset)
+        assert retained != any(changed)
+        assert eval(any_scalar, [retained, any(other), _, any(unset), retained]) == [
+            any(first), any(other), _, any(unset), any(first)
+        ]
+    }
+
+    fn any_fixed(value: list<atomic<any>, 2>) -> list<any, 2> => pass_through(value)
+    fn any_growing(value: list<any>) -> list<any> => pass_through(value)
+    fn any_tuple(value: tuple<any, i64>) -> tuple<any, i64> => pass_through(value)
+    fn any_fields(value: AnyFields) -> AnyFields => pass_through(value)
+    fn any_map_child(value: map<i64, any>) -> map<i64, any> => pass_through(value)
+
+    test any_sparse_children_replace_boxes_without_filling_omissions {
+        assert eval(any_fixed, [
+            delta<list<any, 2>>(items: [1: any()]),
+            delta<list<atomic<any>, 2>>(items: [0: any(0)]), _,
+            delta<list<any, 2>>(items: [1: any(false)])
+        ]) == [
+            delta<list<atomic<any>, 2>>(items: [1: any()]),
+            delta<list<any, 2>>(items: [0: any(0)]), _,
+            delta<list<any, 2>>(items: [1: any(false)])
+        ]
+        assert eval(any_tuple, [delta<tuple<any, i64>>(items: [0: any(0)]), _, delta<tuple<any, i64>>(items: [1: 7])]) == [
+            delta<tuple<any, i64>>(items: [0: any(0)]), _, delta<tuple<any, i64>>(items: [1: 7])
+        ]
+        assert eval(any_fields, [delta<AnyFields>(left: any()), delta<AnyFields>(right: any(0)), delta<AnyFields>(left: any(false))]) == [
+            delta<AnyFields>(left: any()), delta<AnyFields>(right: any(0)), delta<AnyFields>(left: any(false))
+        ]
+        assert eval(any_map_child, [
+            delta<map<i64, any>>(upsert: [7: any()]),
+            delta<map<i64, any>>(upsert: [7: any(0)]), _,
+            delta<map<i64, any>>(remove: [7])
+        ]) == [
+            delta<map<i64, any>>(upsert: [7: any()]),
+            delta<map<i64, any>>(upsert: [7: any(0)]), _,
+            delta<map<i64, any>>(remove: [7])
+        ]
+    }
+
+    test any_growing_children_keep_present_empty_boxes_across_shrink {
+        assert eval(any_growing, [
+            delta<list<any>>(items: [0: any(), 1: any(0)]),
+            delta<list<any>>(items: [1: any(false)]), _,
+            delta<list<any>>(remove: [1]),
+            delta<list<any>>(items: [1: any()])
+        ]) == [
+            delta<list<any>>(items: [1: any(0), 0: any()]),
+            delta<list<any>>(items: [1: any(false)]), _,
+            delta<list<any>>(remove: [1]),
+            delta<list<any>>(items: [1: any()])
+        ]
+    }
+
+    fn any_complete(value: atomic<AnySnapshot>) -> atomic<AnySnapshot> => pass_through(value)
+    test any_complete_compounds_own_boxes_and_ordinary_children {
+        var items: list<any> = []
+        push(items, any(bytes()))
+        var source: AnySnapshot = AnySnapshot(value: any(0), items: items)
+        let retained: AnySnapshot = source
+        source.value = any(false)
+        push(source.items, any())
+        items = []
+        assert eval(any_complete, [retained, _, source, retained]) == [
+            AnySnapshot(value: any(0), items: [any(bytes())]), _,
+            AnySnapshot(value: any(false), items: [any(bytes()), any()]),
+            AnySnapshot(value: any(0), items: [any(bytes())])
+        ]
+    }
+
+    fn any_members(value: set<any>) -> set<any> => pass_through(value)
+    fn any_keys(value: map<any, i64>) -> map<any, i64> => pass_through(value)
+    test any_keys_include_empty_and_distinguish_boolean_from_integer {
+        let zero: any = any(0)
+        let same_zero: any = any(0)
+        let flag: any = any(false)
+        let empty: any = any()
+        assert eval(any_members, [
+            delta<set<any>>(added: [zero, flag, empty]), _,
+            delta<set<any>>(removed: [same_zero]),
+            delta<set<any>>(removed: [flag, empty])
+        ]) == [
+            delta<set<any>>(added: [empty, flag, same_zero]), _,
+            delta<set<any>>(removed: [zero]), delta<set<any>>(removed: [empty, flag])
+        ]
+        assert eval(any_keys, [
+            delta<map<any, i64>>(upsert: [zero: 1, flag: 2, empty: 3]),
+            delta<map<any, i64>>(upsert: [same_zero: 4]), _,
+            delta<map<any, i64>>(remove: [same_zero])
+        ]) == [
+            delta<map<any, i64>>(upsert: [empty: 3, flag: 2, same_zero: 1]),
+            delta<map<any, i64>>(upsert: [zero: 4]), _, delta<map<any, i64>>(remove: [zero])
+        ]
+    }
+
+    fn any_arrivals(value: rolling<any, 2>) -> rolling<any, 2> => pass_through(value)
+    test any_rolling_arrivals_keep_whole_boxes_and_equal_empty_ticks {
+        assert eval(any_arrivals, [_, any(), any(), _, any(0), any(false), _]) == [
+            _, any(), any(), _, any(0), any(false), _
+        ]
+    }
+
+    fn any_global_copy(value: any) -> any {
+        inject global_state
+        when {
+            set(global_state, "any.saved", delta_value(value))
+            var entry: any = get(global_state, "any.saved")
+            let retained: any = any(entry)
+            entry = any(false)
+            return retained
+        }
+    }
+    fn any_global_read_copy(value: any) -> any {
+        inject global_state
+        when {
+            set(global_state, "any.observed", delta_value(value))
+            var retained: any = any()
+            if true {
+                let observed: any = get(global_state, "any.observed")
+                retained = any(observed)
+            }
+            set(global_state, "any.observed", any(false))
+            return retained
+        }
+    }
+    test any_lexical_entry_borrows_retain_owning_boxes_before_replacement {
+        assert eval(any_global_copy, [any(), any(0), _, any(any_two_items())]) == [any(), any(0), _, any(any_two_items())]
+        assert eval(any_global_read_copy, [any(any_two_items()), _, any(0), any()]) == [any(any_two_items()), _, any(0), any()]
+    }
+
+    fn any_replay_context(tick: i64) { when { } }
+    fn any_replayed(tick: i64, const samples: list<TimedValue<any>>) -> atomic<any> {
+        any_replay_context(tick)
+        replay(samples)
+    }
+    test any_timed_captures_retain_nested_payloads_and_types_across_fresh_runs {
+        var source: AnyPayload = AnyPayload(value: 1, items: [1])
+        var box: any = any(source)
+        var sample: TimedValue<atomic<any>> = TimedValue<atomic<any>>(time: @1970-01-01T00:00:00.000001Z, value: box)
+        var samples: list<TimedValue<any>> = []
+        push(samples, sample)
+        push(source.items, 2)
+        source.value = 9
+        box = any(false)
+        sample.value = box
+        sample.time = @1970-01-01T00:00:00.000003Z
+        push(samples, sample)
+        sample.value = any()
+        sample.time = @1970-01-01T00:00:00.000004Z
+        push(samples, sample)
+        sample.value = any(source)
+        assert eval(any_replayed, tick: [1, 1, 1, 1, 1], samples: samples) == [
+            any(AnyPayload(value: 1, items: [1])), _, any(false), any(), _
+        ]
+        assert eval(any_replayed, tick: [1, 1, 1, 1, 1], samples: samples) == [
+            any(AnyPayload(value: 1, items: [1])), _, any(false), any(), _
+        ]
+        let empty: list<TimedValue<any>> = []
+        assert eval(any_replayed, tick: [1, 1], samples: empty) == [_, _]
+    }
+
+    fn any_record_matches(trigger: i64, const expected: list<TimedValue<any>>) -> bool {
+        inject global_state
+        when {
+            let captured: list<TimedValue<any>> = get(global_state, "any.recording")
+            if len(captured) != len(expected) { return false }
+            var index: i64 = 0
+            while index < len(expected) {
+                if captured[index].time != expected[index].time { return false }
+                if captured[index].value != expected[index].value { return false }
+                index += 1
+            }
+            return true
+        }
+    }
+    fn any_recorded(value: any, trigger: i64, const expected: list<TimedValue<any>>) -> bool {
+        record(pass_through(value), "any.recording")
+        any_record_matches(trigger, expected)
+    }
+    test any_recording_retains_empty_equal_and_mixed_types_with_exact_times {
+        var expected: list<TimedValue<any>> = []
+        push(expected, TimedValue<any>(time: @1970-01-01T00:00:00.000001Z, value: any()))
+        push(expected, TimedValue<any>(time: @1970-01-01T00:00:00.000003Z, value: any()))
+        push(expected, TimedValue<any>(time: @1970-01-01T00:00:00.000004Z, value: any(0)))
+        push(expected, TimedValue<any>(time: @1970-01-01T00:00:00.000005Z, value: any(false)))
+        assert eval(any_recorded,
+            value: [any(), _, any(), any(0), any(false)], trigger: [_, _, _, _, _, 1], expected: expected
+        ) == [_, _, _, _, _, true]
+        let empty: list<TimedValue<any>> = []
+        assert eval(any_recorded, value: [_, _, _], trigger: [_, _, _, 1], expected: empty) == [_, _, _, true]
+        assert eval(any_recorded, value: [], trigger: [_, 1], expected: empty) == [_, true]
+    }
+
+    fn any_box_sparse(value: map<i64, i64>) -> any {
+        when { return any(delta_value(value)) }
+    }
+    fn any_distinct_from_integer(value: any) -> bool {
+        when { return value != any(0) }
+    }
+    fn any_sparse_type_observed(value: map<i64, i64>) -> bool => any_distinct_from_integer(any_box_sparse(value))
+    fn any_delta_replayed(tick: i64, const samples: list<TimedValue<any>>) -> bool {
+        any_replay_context(tick)
+        any_distinct_from_integer(pass_through(replay(samples)))
+    }
+
+    # Structural deltas have no ordinary equality or inspection capability.
+    # Different contained types can be distinguished without requesting either.
+    test any_boxed_deltas_retain_origin_and_publish_without_hidden_application {
+        let removed: any = any(delta<map<i64, i64>>(remove: [99]))
+        let fixed: any = any(delta<list<i64, 2>>(items: [1: 7]))
+        assert removed != fixed
+        assert eval(any_sparse_type_observed, [delta<map<i64, i64>>(upsert: [1: 7]), _, delta<map<i64, i64>>(remove: [1])]) == [true, _, true]
+        var source: any = removed
+        var sample: TimedValue<any> = TimedValue<any>(time: @1970-01-01T00:00:00.000001Z, value: source)
+        var samples: list<TimedValue<any>> = []
+        push(samples, sample)
+        sample.time = @1970-01-01T00:00:00.000003Z
+        push(samples, sample)
+        source = any(0)
+        sample.value = source
+        # Removal of absent key 99 is ordinary boxed data, not a map update.
+        assert eval(any_delta_replayed, tick: [1, 1, 1, 1], samples: samples) == [true, _, true, _]
+    }
+
+    const fn any_less(first: any, second: any) -> bool { return first < second }
+    fn any_missing_order(value: any) -> bool {
+        when { return value < value }
+    }
+    test any_missing_contained_order_raises_at_ordinary_execution {
+        let unordered: any = any(map<i64, i64>(items: [1: 2]))
+        assert !(unordered < any(0))
+        assert raises("value.capability") { eval(any_missing_order, [unordered]) }
+        assert raises("value.capability") { assert any_less(unordered, unordered) }
+        assert raises("value.capability") { assert any(map<i64, i64>(items: [1: 2])) < any(map<i64, i64>(items: [1: 2])) }
+        var retained: any = any()
+        assert raises("value.capability") {
+            retained = any(bytes([0, 255]))
+            assert any_less(unordered, unordered)
+            retained = any(false)
+        }
+        assert retained == any(bytes([0, 255]))
+    }
+}
