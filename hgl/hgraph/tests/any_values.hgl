@@ -95,8 +95,8 @@ test {
         let deep: any = any(root)
         leaf.value = 9
         push(leaf.items, 9)
-        root.value = 0
-        root.next = null
+        # Complete reconstruction changes optional presence without field clearing.
+        root = AnyChain(value: 0, items: [1])
         assert deep == any(AnyChain(value: 1, items: [1], next: AnyChain(value: 2, items: [2])))
         assert eval(any_scalar, [deep, any(root), _, deep]) == [
             any(AnyChain(value: 1, items: [1], next: AnyChain(value: 2, items: [2]))),
