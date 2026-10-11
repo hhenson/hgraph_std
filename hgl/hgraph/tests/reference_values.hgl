@@ -58,10 +58,13 @@ test {
             index: [0, _, 0, 1, _, 1, 0, _],
             first: [7, 8, _, _, 9], second: [7, 20, _, _, 21]
         ) == [7, 8, _, 20, 21, _, 9, _]
+        # A signal consumer dereferences the route (TS-18): it counts the
+        # selected target's ticks and each sampled re-pointing, while an equal
+        # re-selection at cycles 2 and 5 is not a tick (TS-16).
         assert eval(reference_route_ticks,
             index: [0, _, 0, 1, _, 1, 0, _],
             first: [7, 8, _, _, 9], second: [7, 20, _, _, 21]
-        ) == [1, _, _, 2, _, _, 3, _]
+        ) == [1, 2, _, 3, 4, _, 5, _]
         # A and B both hold 7: switching still changes the designation.
         assert eval(reference_selected_equals_first,
             index: [0, 1, 1, 0, _], first: [7], second: [7], step: [1, 1, 1, 1, 1]
