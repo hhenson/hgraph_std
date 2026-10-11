@@ -27,7 +27,7 @@ test {
     }
 
     fn reference_choose_fields(index: i64, first: ref<ReferenceProjectionFields>, second: ref<ReferenceProjectionFields>) -> ref<ReferenceProjectionFields> {
-        when valid(index, first, second) && (modified(index) || modified(first) || modified(second)) {
+        when {
             if index == 0 { return first }
             return second
         }
