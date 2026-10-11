@@ -10,6 +10,7 @@ no Python, C++ or Rust implementation and selects no target provider.
 - [Ordinary scalar replay and record](docs/replay-record.md), also configured by `eval`
 - [Empty sparse delta validity and repeated-application controls](hgl/hgraph/tests/empty_delta_validity.hgl)
 - [Independently sampled endpoint state](docs/state-observation.md)
+- [Conditional REF owner-expiry expectations](hgl/hgraph/tests/reference_conditional_expiry.hgl)
 - [HGL implementations](hgl/hgraph/impl)
 - [Behaviour tests](hgl/hgraph/tests)
 - [Required payload-read failures and retention controls](hgl/hgraph/tests/unset_required_read_values.hgl)
