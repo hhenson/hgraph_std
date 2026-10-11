@@ -1,32 +1,33 @@
 module hgraph.std part recursive_atomic_values_tests
 
-struct PublicationChain {
-    value: i64
-    items: list<i64>
-    next: atomic<PublicationChain> = null
-}
-
-struct PublicationLeft {
-    value: i64
-    other: atomic<PublicationRight> = null
-}
-struct PublicationRight {
-    value: i64
-    other: atomic<PublicationLeft> = null
-}
-
-struct PublicationLink<T> {
-    value: T
-    next: atomic<PublicationLink<T>> = null
-}
-
-struct PublicationSwap<A, B> {
-    left: A
-    right: B
-    next: atomic<PublicationSwap<B, A>> = null
-}
-
 test {
+    struct PublicationChain {
+        value: i64
+        items: list<i64>
+        next: atomic<PublicationChain> = null
+    }
+
+    struct PublicationLeft {
+        value: i64
+        other: atomic<PublicationRight> = null
+    }
+
+    struct PublicationRight {
+        value: i64
+        other: atomic<PublicationLeft> = null
+    }
+
+    struct PublicationLink<T> {
+        value: T
+        next: atomic<PublicationLink<T>> = null
+    }
+
+    struct PublicationSwap<A, B> {
+        left: A
+        right: B
+        next: atomic<PublicationSwap<B, A>> = null
+    }
+
     fn chain_snapshot(value: atomic<PublicationChain>) -> atomic<PublicationChain> => pass_through(value)
     fn mutual_snapshot(value: atomic<PublicationLeft>) -> atomic<PublicationLeft> => pass_through(value)
     fn generic_chain_snapshot(value: atomic<PublicationLink<str>>) -> atomic<PublicationLink<str>> => pass_through(value)

@@ -1,9 +1,9 @@
 module hgraph.std part rolling_values_tests
 
-struct RollingSnapshot { amount: i64
-    label: str }
-
 test {
+    struct RollingSnapshot { amount: i64
+        label: str }
+
     fn rolling_ticks(value: rolling<i64, 2, 2>) -> rolling<i64, 2, 2> => pass_through(value)
     fn rolling_ticks_default(value: rolling<i64, 2>) -> rolling<i64, 2, 2> => pass_through(value)
     fn rolling_duration(value: rolling<i64, 5us, 1us>) -> rolling<i64, 5us, 1us> => pass_through(value)

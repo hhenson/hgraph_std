@@ -1,13 +1,13 @@
 module hgraph.std part recursive_eval_values_tests
 
-struct SparseClockFields {
-    day: date
-    time_of_day: time
-    instant: datetime
-    elapsed: duration
-}
-
 test {
+    struct SparseClockFields {
+        day: date
+        time_of_day: time
+        instant: datetime
+        elapsed: duration
+    }
+
     fn recursive_map(value: map<i64, map<i64, i64>>) -> map<i64, map<i64, i64>> => pass_through(value)
     fn recursive_fixed(value: list<list<i64, 2>, 2>) -> list<list<i64, 2>, 2> => pass_through(value)
     fn sparse_clock_tuple(value: tuple<date, time, datetime, duration>) -> tuple<date, time, datetime, duration> => pass_through(value)

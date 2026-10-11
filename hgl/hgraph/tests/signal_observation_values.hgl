@@ -1,9 +1,9 @@
 module hgraph.std part signal_observation_values_tests
 
-struct SignalObservedFields { amount: i64
-    label: str }
-
 test {
+    struct SignalObservedFields { amount: i64
+        label: str }
+
     # Signal erases payload access; count publications without inspecting values.
     fn signal_publications(value: signal) -> i64 {
         state count: i64 = 0

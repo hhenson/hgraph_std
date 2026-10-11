@@ -1,8 +1,8 @@
 module hgraph.std part scalar_key_values_tests
 
-enum CollectionKeyMode { first = -7, second = 11 }
-
 test {
+    enum CollectionKeyMode { first = -7, second = 11 }
+
     fn key_set_bool(value: set<bool>) -> set<bool> => pass_through(value)
     fn key_map_bool(value: map<bool, i64>) -> map<bool, i64> => pass_through(value)
     fn key_set_i64(value: set<i64>) -> set<i64> => pass_through(value)

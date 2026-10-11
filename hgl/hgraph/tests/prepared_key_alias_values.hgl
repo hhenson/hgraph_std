@@ -1,8 +1,8 @@
 module hgraph.std part prepared_key_alias_values_tests
 
-enum RetainedKeyMode { first = -1, second = 2 }
-
 test {
+    enum RetainedKeyMode { first = -1, second = 2 }
+
     fn retained_zone_members(value: set<timezone>) -> set<timezone> => pass_through(value)
     fn retained_zone_keys(value: map<timezone, timezone>) -> map<timezone, timezone> => pass_through(value)
     fn retained_enum_keys(value: map<RetainedKeyMode, i64>) -> map<RetainedKeyMode, i64> => pass_through(value)

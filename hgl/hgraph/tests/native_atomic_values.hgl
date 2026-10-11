@@ -1,12 +1,14 @@
 module hgraph.std part native_atomic_values_tests
 
-struct NativeFields { left: Token
-    right: Token }
-struct NativeSnapshot { value: Token
-    items: list<Token> }
-struct NativeEntry { value: Token }
-
 test {
+    struct NativeFields { left: Token
+        right: Token }
+
+    struct NativeSnapshot { value: Token
+        items: list<Token> }
+
+    struct NativeEntry { value: Token }
+
     fn native_scalar(value: Token) -> Token => pass_through(value)
     fn native_atomic(value: atomic<Token>) -> Token => pass_through(value)
     fn native_atomic_result(value: Token) -> atomic<Token> => pass_through(value)

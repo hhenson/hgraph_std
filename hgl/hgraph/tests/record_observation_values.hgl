@@ -1,11 +1,11 @@
 module hgraph.std part record_observation_values_tests
 
-struct RecorderSnapshot {
-    amount: i64
-    label: str
-}
-
 test {
+    struct RecorderSnapshot {
+        amount: i64
+        label: str
+    }
+
     const fn recorder_expected<T>(first: delta<T>, second: delta<T>) -> list<TimedValue<T>> {
         var values: list<TimedValue<T>> = []
         push(values, TimedValue<T>(time: @1970-01-01T00:00:00.000001Z, value: first))

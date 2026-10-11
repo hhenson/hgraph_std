@@ -1,9 +1,9 @@
 module hgraph.std part reference_owner_export_values_tests
 
-struct RefExportPair { left: i64
-    right: i64 }
-
 test {
+    struct RefExportPair { left: i64
+        right: i64 }
+
     fn export_route<T>(value: ref<T>) -> ref<T> {
         when { return value }
     }

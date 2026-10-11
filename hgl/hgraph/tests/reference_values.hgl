@@ -1,9 +1,9 @@
 module hgraph.std part reference_values_tests
 
-struct ReferenceFields { left: i64
-    right: i64 }
-
 test {
+    struct ReferenceFields { left: i64
+        right: i64 }
+
     fn reference_relay(value: ref<i64>) -> ref<i64> {
         when { return value }
     }
