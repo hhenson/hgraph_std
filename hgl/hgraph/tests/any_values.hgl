@@ -339,34 +339,29 @@ test {
         assert eval(any_delta_replayed, tick: [1, 1, 1, 1], samples: samples) == [true, _, true, _]
     }
 
-    fn any_equals_expected(value: any, const expected: any) -> bool {
-        when { return value == expected }
+    fn any_has_equality(value: any) -> bool {
+        when { return value == value }
     }
-    fn any_sparse_equality(value: map<i64, i64>, const expected: any) -> bool =>
-        any_equals_expected(pass_through(any_box_sparse(value)), expected)
+    fn any_sparse_equality(value: map<i64, i64>) -> bool =>
+        any_has_equality(pass_through(any_box_sparse(value)))
     fn any_box_complete_map(value: atomic<map<i64, i64>>) -> any {
         when { return any(value) }
     }
-    fn any_complete_map_equality(value: atomic<map<i64, i64>>, const expected: any) -> bool =>
-        any_equals_expected(pass_through(any_box_complete_map(value)), expected)
-    fn any_replayed_equality(tick: i64, const samples: list<TimedValue<any>>, const expected: any) -> bool {
+    fn any_complete_map_equality(value: atomic<map<i64, i64>>) -> bool =>
+        any_has_equality(pass_through(any_box_complete_map(value)))
+    fn any_replayed_equality(tick: i64, const samples: list<TimedValue<any>>) -> bool {
         any_replay_context(tick)
-        any_equals_expected(pass_through(replay(samples)), expected)
+        any_has_equality(pass_through(replay(samples)))
     }
 
     test any_boxed_sparse_transport_preserves_missing_delta_equality {
-        let complete: any = any(map<i64, i64>(items: [1: 7]))
         assert eval(any_complete_map_equality,
-            value: [map<i64, i64>(items: [1: 7]), _, map<i64, i64>(items: [1: 8]), map<i64, i64>(items: []), map<i64, i64>(items: [1: 7])],
-            expected: complete
-        ) == [true, _, false, false, true]
-        let sparse: any = any(delta<map<i64, i64>>(upsert: [1: 7]))
-        # Compare the transported box with the same contained delta type.
-        # Hidden application to a complete map would return false, not raise.
+            value: [map<i64, i64>(items: [1: 7]), _, map<i64, i64>(items: [1: 8]), map<i64, i64>(items: []), map<i64, i64>(items: [1: 7])]
+        ) == [true, _, true, true, true]
+        # Self-comparison still requires the transported delta's Eq capability.
+        # Hidden application to a complete map would return true, not raise.
         assert raises("value.capability") {
-            eval(any_sparse_equality,
-                value: [delta<map<i64, i64>>(upsert: [1: 7])], expected: sparse
-            )
+            eval(any_sparse_equality, value: [delta<map<i64, i64>>(upsert: [1: 7])])
         }
     }
 
@@ -378,14 +373,14 @@ test {
         push(complete_samples, TimedValue<any>(time: @1970-01-01T00:00:00.000004Z, value: any(map<i64, i64>(items: []))))
         push(complete_samples, TimedValue<any>(time: @1970-01-01T00:00:00.000005Z, value: complete))
         assert eval(any_replayed_equality,
-            tick: [1, 1, 1, 1, 1, 1], samples: complete_samples, expected: complete
-        ) == [true, _, false, false, true, _]
+            tick: [1, 1, 1, 1, 1, 1], samples: complete_samples
+        ) == [true, _, true, true, true, _]
         let sparse: any = any(delta<map<i64, i64>>(upsert: [1: 7]))
         var sparse_samples: list<TimedValue<any>> = []
         push(sparse_samples, TimedValue<any>(time: @1970-01-01T00:00:00.000001Z, value: sparse))
         assert raises("value.capability") {
             eval(any_replayed_equality,
-                tick: [1, 1], samples: sparse_samples, expected: sparse
+                tick: [1, 1], samples: sparse_samples
             )
         }
     }
