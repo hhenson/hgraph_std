@@ -11,11 +11,11 @@ struct RefShapeSecond: RefShapeFamily { items: list<i64> }
 
 test {
     fn ref_shape_relay<T>(value: ref<T>) -> ref<T> {
-        when valid(value) && modified(value) { return value }
+        when { return value }
     }
     fn ref_shape_hold<T>(value: ref<T>) -> ref<T> {
         state captured: bool = false
-        when valid(value) && modified(value) {
+        when {
             if !captured {
                 captured = true
                 return value
@@ -129,7 +129,7 @@ test {
     }
 
     fn ref_shape_choose<T>(index: i64, first: ref<T>, second: ref<T>) -> ref<T> {
-        when valid(index, first, second) && (modified(index) || modified(first) || modified(second)) {
+        when {
             if index == 0 { return first }
             return second
         }
