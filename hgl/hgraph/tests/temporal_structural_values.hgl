@@ -1,22 +1,22 @@
 module hgraph.std part temporal_structural_values_tests
 
-struct TemporalSnapshot {
-    civil: civil_datetime
-    zone: timezone
-    zoned: zoned_datetime
-}
-
-struct TemporalDefaultSnapshot {
-    civil: civil_datetime = @2026-01-15T12:30
-    zone: timezone = @[US/Eastern]
-    zoned: zoned_datetime = @2026-01-15T12:30+00:00[Etc/UTC]
-}
-
-struct TemporalOverriddenDefault {
-    zone: timezone = @[Missing/UnusedDefault]
-}
-
 test {
+    struct TemporalSnapshot {
+        civil: civil_datetime
+        zone: timezone
+        zoned: zoned_datetime
+    }
+
+    struct TemporalDefaultSnapshot {
+        civil: civil_datetime = @2026-01-15T12:30
+        zone: timezone = @[US/Eastern]
+        zoned: zoned_datetime = @2026-01-15T12:30+00:00[Etc/UTC]
+    }
+
+    struct TemporalOverriddenDefault {
+        zone: timezone = @[Missing/UnusedDefault]
+    }
+
     fn temporal_civil_list(value: list<civil_datetime, 2>) -> list<civil_datetime, 2> => pass_through(value)
     fn temporal_zone_map(value: map<i64, timezone>) -> map<i64, timezone> => pass_through(value)
     fn temporal_mixed_tuple(value: tuple<civil_datetime, timezone, zoned_datetime>) -> tuple<civil_datetime, timezone, zoned_datetime> => pass_through(value)

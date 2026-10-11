@@ -1,19 +1,21 @@
 module hgraph.std part unset_required_read_values_tests
 
-struct UnsetReadNumber {
-    sibling: i64
-    child: i64
-}
-struct UnsetReadFlag {
-    sibling: i64
-    child: bool
-}
-struct UnsetReadSamples {
-    sibling: i64
-    child: list<i64, 2>
-}
-
 test {
+    struct UnsetReadNumber {
+        sibling: i64
+        child: i64
+    }
+
+    struct UnsetReadFlag {
+        sibling: i64
+        child: bool
+    }
+
+    struct UnsetReadSamples {
+        sibling: i64
+        child: list<i64, 2>
+    }
+
     fn unset_read_number_payload(value: UnsetReadNumber) -> i64 {
         when {
             let copy = value

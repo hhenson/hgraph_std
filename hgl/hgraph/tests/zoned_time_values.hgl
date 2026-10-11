@@ -1,15 +1,15 @@
 module hgraph.std part zoned_time_values_tests
 
-struct ZonedTimeSnapshot {
-    opening: zoned_time
-    closing: zoned_time
-}
-
-struct ZonedTimeDefault {
-    opening: zoned_time = @09:30[US/Eastern]
-}
-
 test {
+    struct ZonedTimeSnapshot {
+        opening: zoned_time
+        closing: zoned_time
+    }
+
+    struct ZonedTimeDefault {
+        opening: zoned_time = @09:30[US/Eastern]
+    }
+
     fn zoned_time_forward(value: zoned_time) -> zoned_time => pass_through(value)
     fn zoned_time_atomic(value: atomic<zoned_time>) -> atomic<zoned_time> => pass_through(value)
     fn zoned_time_fixed(value: list<zoned_time, 2>) -> list<zoned_time, 2> => pass_through(value)

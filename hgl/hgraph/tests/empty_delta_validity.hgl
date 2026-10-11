@@ -1,12 +1,14 @@
 module hgraph.std part empty_delta_validity_tests
 
-struct EmptyDeltaFields { left: i64
-    right: bool }
-struct EmptyDeltaChildren { left: list<i64, 2>
-    right: list<i64, 2> }
-struct EmptyDeltaZero {}
-
 test {
+    struct EmptyDeltaFields { left: i64
+        right: bool }
+
+    struct EmptyDeltaChildren { left: list<i64, 2>
+        right: list<i64, 2> }
+
+    struct EmptyDeltaZero {}
+
     fn empty_forward<T>(value: T) -> T { when { return delta_value(value) } }
     # Only step is required valid, so an independent observation can see invalid inputs.
     fn empty_metadata<T>(value: T, step: i64) -> atomic<tuple<bool, bool, bool>> {

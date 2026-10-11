@@ -1,23 +1,30 @@
 module hgraph.std part any_values_tests
 
-struct AnyPayload { value: i64
-    items: list<i64> }
-struct AnyNested { child: AnyPayload
-    label: str }
-struct AnyChain { value: i64
-    items: list<i64>
-    next: atomic<AnyChain> = null }
-abstract struct AnyFamily { label: str }
-struct AnyFirst: AnyFamily { items: list<i64>
-    mark: i64 = null }
-struct AnySecond: AnyFamily { items: list<i64>
-    mark: i64 = null }
-struct AnyFields { left: any
-    right: any }
-struct AnySnapshot { value: any
-    items: list<any> }
-
 test {
+    struct AnyPayload { value: i64
+        items: list<i64> }
+
+    struct AnyNested { child: AnyPayload
+        label: str }
+
+    struct AnyChain { value: i64
+        items: list<i64>
+        next: atomic<AnyChain> = null }
+
+    abstract struct AnyFamily { label: str }
+
+    struct AnyFirst: AnyFamily { items: list<i64>
+        mark: i64 = null }
+
+    struct AnySecond: AnyFamily { items: list<i64>
+        mark: i64 = null }
+
+    struct AnyFields { left: any
+        right: any }
+
+    struct AnySnapshot { value: any
+        items: list<any> }
+
     fn any_scalar(value: any) -> any => pass_through(value)
     fn any_atomic(value: atomic<any>) -> any => pass_through(value)
     fn any_atomic_result(value: any) -> atomic<any> => pass_through(value)

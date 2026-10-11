@@ -1,22 +1,22 @@
 module hgraph.std part enum_values_tests
 
-enum PublicationMode {
-    low = -9223372036854775808,
-    first = -7,
-    second = 11,
-    high = 9223372036854775807
-}
-
-struct EnumSnapshot {
-    mode: PublicationMode
-    label: str
-}
-
-struct EnumDefault {
-    mode: PublicationMode = PublicationMode::first
-}
-
 test {
+    enum PublicationMode {
+        low = -9223372036854775808,
+        first = -7,
+        second = 11,
+        high = 9223372036854775807
+    }
+
+    struct EnumSnapshot {
+        mode: PublicationMode
+        label: str
+    }
+
+    struct EnumDefault {
+        mode: PublicationMode = PublicationMode::first
+    }
+
     fn enum_forward(value: PublicationMode) -> PublicationMode => pass_through(value)
     fn enum_atomic(value: atomic<PublicationMode>) -> PublicationMode => pass_through(value)
     fn enum_fixed(value: list<PublicationMode, 2>) -> list<PublicationMode, 2> => pass_through(value)

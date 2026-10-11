@@ -1,17 +1,17 @@
 module hgraph.std part optional_atomic_values_tests
 
-struct OptionalPublication {
-    count: i64 = null
-    label: str = null
-    items: list<i64> = null
-}
-
-struct OptionalPublicationEnvelope {
-    value: OptionalPublication
-    note: str
-}
-
 test {
+    struct OptionalPublication {
+        count: i64 = null
+        label: str = null
+        items: list<i64> = null
+    }
+
+    struct OptionalPublicationEnvelope {
+        value: OptionalPublication
+        note: str
+    }
+
     fn optional_snapshot(value: atomic<OptionalPublication>) -> atomic<OptionalPublication> => pass_through(value)
     fn optional_envelope(value: atomic<OptionalPublicationEnvelope>) -> atomic<OptionalPublicationEnvelope> => pass_through(value)
     fn optional_list(value: atomic<list<OptionalPublication>>) -> atomic<list<OptionalPublication>> => pass_through(value)
