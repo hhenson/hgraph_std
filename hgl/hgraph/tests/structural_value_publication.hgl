@@ -1,11 +1,10 @@
 module hgraph.std part structural_value_publication_tests
 
-struct PublicationPair {
-    left: i64
-    right: bool
-}
-
 test {
+    struct PublicationPair {
+        left: i64
+        right: bool
+    }
 
     fn select_value(step: i64, a: PublicationPair, b: PublicationPair) -> PublicationPair {
         when modified(step) && valid(step, a, b) {

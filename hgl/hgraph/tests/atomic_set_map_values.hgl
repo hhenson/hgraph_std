@@ -1,11 +1,11 @@
 module hgraph.std part atomic_set_map_values_tests
 
-struct AtomicCollections {
-    tags: set<str>
-    counts: map<str, i64>
-}
-
 test {
+    struct AtomicCollections {
+        tags: set<str>
+        counts: map<str, i64>
+    }
+
     fn complete_set(value: atomic<set<str>>) -> atomic<set<str>> => pass_through(value)
     fn complete_map(value: atomic<map<str, i64>>) -> atomic<map<str, i64>> => pass_through(value)
     fn complete_nested_map(value: atomic<map<str, list<i64>>>) -> atomic<map<str, list<i64>>> => pass_through(value)

@@ -1,9 +1,9 @@
 module hgraph.std part any_capability_edges_tests
 
-# Ordinary storage only: a structural delta is not a new temporal payload.
-struct AnyCapabilityDeltaField { change: delta<list<i64, 2>> }
-
 test {
+    # Ordinary storage only: a structural delta is not a new temporal payload.
+    struct AnyCapabilityDeltaField { change: delta<list<i64, 2>> }
+
     const fn any_capability_set_key(key: any) -> bool {
         let members: set<any> = set<any>(items: [key])
         return any(members) != any(0)

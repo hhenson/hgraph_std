@@ -1,29 +1,36 @@
 module hgraph.std part abstract_atomic_values_tests
 
-abstract struct PublicationEvent {
-    label: str
-}
-struct PublicationFirst: PublicationEvent {
-    items: list<i64>
-    count: i64 = null
-}
-struct PublicationSecond: PublicationEvent {
-    items: list<i64>
-    count: i64 = null
-}
-abstract struct PublicationSubEvent: PublicationEvent { }
-struct PublicationNestedEvent: PublicationSubEvent { items: list<i64> }
-abstract struct PublicationGenericEvent<T> {
-    value: T
-}
-struct PublicationGenericFirst<T>: PublicationGenericEvent<T> { }
-struct PublicationGenericSecond<T>: PublicationGenericEvent<T> { }
-
-struct PublicationEventEnvelope {
-    event: PublicationEvent
-}
-
 test {
+    abstract struct PublicationEvent {
+        label: str
+    }
+
+    struct PublicationFirst: PublicationEvent {
+        items: list<i64>
+        count: i64 = null
+    }
+
+    struct PublicationSecond: PublicationEvent {
+        items: list<i64>
+        count: i64 = null
+    }
+
+    abstract struct PublicationSubEvent: PublicationEvent { }
+
+    struct PublicationNestedEvent: PublicationSubEvent { items: list<i64> }
+
+    abstract struct PublicationGenericEvent<T> {
+        value: T
+    }
+
+    struct PublicationGenericFirst<T>: PublicationGenericEvent<T> { }
+
+    struct PublicationGenericSecond<T>: PublicationGenericEvent<T> { }
+
+    struct PublicationEventEnvelope {
+        event: PublicationEvent
+    }
+
     fn family_snapshot(value: atomic<PublicationEvent>) -> atomic<PublicationEvent> => pass_through(value)
     fn family_list(value: atomic<list<PublicationEvent>>) -> atomic<list<PublicationEvent>> => pass_through(value)
     fn family_envelope(value: atomic<PublicationEventEnvelope>) -> atomic<PublicationEventEnvelope> => pass_through(value)

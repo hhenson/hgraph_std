@@ -1,11 +1,11 @@
 module hgraph.std part atomic_replay_values_tests
 
-struct AtomicReplayPayload {
-    values: list<i64>
-    label: str = "default"
-}
-
 test {
+    struct AtomicReplayPayload {
+        values: list<i64>
+        label: str = "default"
+    }
+
     const fn atomic_replay_nonempty() -> list<i64> { return [1, 2] }
     const fn atomic_replay_empty() -> list<i64> { return [] }
     fn atomic_replay_context(tick: i64) { when { } }

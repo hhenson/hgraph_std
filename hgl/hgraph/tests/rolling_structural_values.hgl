@@ -1,11 +1,11 @@
 module hgraph.std part rolling_structural_values_tests
 
-struct RollingFields {
-    arrivals: rolling<i64, 2>
-    label: str
-}
-
 test {
+    struct RollingFields {
+        arrivals: rolling<i64, 2>
+        label: str
+    }
+
     fn rolling_fixed_child(value: list<rolling<i64, 2>, 2>) -> list<rolling<i64, 2>, 2> => pass_through(value)
     fn rolling_tuple_child(value: tuple<rolling<i64, 2>, str>) -> tuple<rolling<i64, 2>, str> => pass_through(value)
     fn rolling_named_child(value: RollingFields) -> RollingFields => pass_through(value)

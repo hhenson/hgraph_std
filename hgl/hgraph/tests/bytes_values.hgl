@@ -1,14 +1,15 @@
 module hgraph.std part bytes_values_tests
 
-struct ByteFields { left: bytes
-    right: bytes }
-struct ByteSnapshot {
-    value: bytes
-    chunks: list<bytes>
-    lookup: map<bytes, bytes>
-}
-
 test {
+    struct ByteFields { left: bytes
+        right: bytes }
+
+    struct ByteSnapshot {
+        value: bytes
+        chunks: list<bytes>
+        lookup: map<bytes, bytes>
+    }
+
     fn byte_scalar(value: bytes) -> bytes => pass_through(value)
     fn byte_atomic(value: atomic<bytes>) -> bytes => pass_through(value)
     fn byte_atomic_result(value: bytes) -> atomic<bytes> => pass_through(value)

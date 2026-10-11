@@ -1,11 +1,13 @@
 module hgraph.std part delta_identity_values_tests
 
-struct IdentityFields<T> { left: T
-    right: T }
-struct IdentityPublication<T> { value: delta<T> }
-struct IdentityBatch<T> { values: list<IdentityPublication<T>> }
-
 test {
+    struct IdentityFields<T> { left: T
+        right: T }
+
+    struct IdentityPublication<T> { value: delta<T> }
+
+    struct IdentityBatch<T> { values: list<IdentityPublication<T>> }
+
     fn identity_replay_context(tick: i64) { when { } }
 
     # Shape requirements propagate through both generic structs, including temporal children.

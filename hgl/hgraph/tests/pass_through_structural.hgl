@@ -1,9 +1,9 @@
 module hgraph.std part pass_through_structural_tests
 
-struct DeltaPair<T> { left:T
-    right:T }
-
 test {
+    struct DeltaPair<T> { left:T
+        right:T }
+
     fn set_i64(value:set<i64>)->set<i64> => pass_through(value)
     fn set_bool(value:set<bool>)->set<bool> => pass_through(value)
     fn zero(value:list<i64,0>)->list<i64,0> => pass_through(value)

@@ -1,30 +1,30 @@
 module hgraph.std part atomic_eval_values_tests
 
-struct AtomicRequiredPair {
-    amount: i64
-    label: str
-}
-
-struct AtomicDefaultQuote {
-    bid: i64
-    ask: i64 = 20
-    label: str = "default"
-}
-
-struct AtomicSnapshotBook {
-    quote: AtomicDefaultQuote
-    levels: list<tuple<i64, str>>
-    active: bool = true
-}
-
-struct AtomicChildBook {
-    snapshot: atomic<AtomicDefaultQuote>
-    sequence: i64
-}
-
-struct AtomicProjectionBox<T> { value: T }
-
 test {
+    struct AtomicRequiredPair {
+        amount: i64
+        label: str
+    }
+
+    struct AtomicDefaultQuote {
+        bid: i64
+        ask: i64 = 20
+        label: str = "default"
+    }
+
+    struct AtomicSnapshotBook {
+        quote: AtomicDefaultQuote
+        levels: list<tuple<i64, str>>
+        active: bool = true
+    }
+
+    struct AtomicChildBook {
+        snapshot: atomic<AtomicDefaultQuote>
+        sequence: i64
+    }
+
+    struct AtomicProjectionBox<T> { value: T }
+
     const fn atomic_full_list() -> list<i64> { return [1, 2] }
     const fn atomic_other_list() -> list<i64> { return [7] }
     const fn atomic_empty_list() -> list<i64> { return [] }

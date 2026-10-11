@@ -1,17 +1,17 @@
 module hgraph.std part pass_through_defaulted_fields_tests
 
-struct DefaultedDeltaQuote {
-    bid: i64
-    ask: i64 = 99
-    label: str = "default"
-}
-
-struct DefaultedDeltaBook {
-    quote: DefaultedDeltaQuote
-    active: bool = true
-}
-
 test {
+    struct DefaultedDeltaQuote {
+        bid: i64
+        ask: i64 = 99
+        label: str = "default"
+    }
+
+    struct DefaultedDeltaBook {
+        quote: DefaultedDeltaQuote
+        active: bool = true
+    }
+
     fn defaulted_quote(value: DefaultedDeltaQuote) -> DefaultedDeltaQuote => pass_through(value)
     fn defaulted_book(value: DefaultedDeltaBook) -> DefaultedDeltaBook => pass_through(value)
 

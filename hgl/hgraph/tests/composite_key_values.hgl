@@ -1,15 +1,16 @@
 module hgraph.std part composite_key_values_tests
 
-struct PublicationKey {
-    number: i64
-    label: str
-}
-struct PublicationNestedKey {
-    pair: tuple<i64, str>
-    flag: bool = null
-}
-
 test {
+    struct PublicationKey {
+        number: i64
+        label: str
+    }
+
+    struct PublicationNestedKey {
+        pair: tuple<i64, str>
+        flag: bool = null
+    }
+
     fn tuple_members(value: set<tuple<i64, str>>) -> set<tuple<i64, str>> => pass_through(value)
     fn tuple_keys(value: map<tuple<i64, str>, i64>) -> map<tuple<i64, str>, i64> => pass_through(value)
     fn struct_members(value: set<PublicationKey>) -> set<PublicationKey> => pass_through(value)

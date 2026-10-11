@@ -1,15 +1,20 @@
 module hgraph.std part reference_structural_values_tests
 
-struct RefShapeFields { left: i64
-    right: i64 }
-struct RefShapeSnapshot { value: i64
-    items: list<i64> }
-enum RefShapeTag { first, second }
-abstract struct RefShapeFamily { label: str }
-struct RefShapeFirst: RefShapeFamily { items: list<i64> }
-struct RefShapeSecond: RefShapeFamily { items: list<i64> }
-
 test {
+    struct RefShapeFields { left: i64
+        right: i64 }
+
+    struct RefShapeSnapshot { value: i64
+        items: list<i64> }
+
+    enum RefShapeTag { first, second }
+
+    abstract struct RefShapeFamily { label: str }
+
+    struct RefShapeFirst: RefShapeFamily { items: list<i64> }
+
+    struct RefShapeSecond: RefShapeFamily { items: list<i64> }
+
     fn ref_shape_relay<T>(value: ref<T>) -> ref<T> {
         when { return value }
     }

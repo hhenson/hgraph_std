@@ -1,8 +1,8 @@
 module hgraph.std part atomic_scalar_values_tests
 
-struct AtomicScalarBox<T> { value: T }
-
 test {
+    struct AtomicScalarBox<T> { value: T }
+
     # Atomic spelling normalizes before generic pass_through specialization.
     fn atomic_scalar_bool(value: atomic<bool>) -> bool => pass_through(value)
     fn scalar_atomic_bool(value: bool) -> atomic<bool> => pass_through(value)
