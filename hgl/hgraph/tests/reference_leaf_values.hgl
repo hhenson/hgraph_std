@@ -4,11 +4,11 @@ module hgraph.std part reference_leaf_values_tests
 # Only ordinary leaf values enter eval; graph bindings obtain every REF.
 test {
     fn ref_leaf_relay<T>(value: ref<T>) -> ref<T> {
-        when valid(value) && modified(value) { return value }
+        when { return value }
     }
     fn ref_leaf_hold<T>(value: ref<T>) -> ref<T> {
         state captured: bool = false
-        when valid(value) && modified(value) {
+        when {
             if !captured {
                 captured = true
                 return value
