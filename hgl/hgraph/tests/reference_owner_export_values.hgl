@@ -5,7 +5,7 @@ struct RefExportPair { left: i64
 
 test {
     fn export_route<T>(value: ref<T>) -> ref<T> {
-        when valid(value) && modified(value) { return value }
+        when { return value }
     }
     fn export_inner(enabled: bool, first: i64, second: i64) -> ref<i64> {
         var result: ref<i64>
