@@ -1,0 +1,256 @@
+module hgraph.std part bytes_values_tests
+
+struct ByteFields { left: bytes
+    right: bytes }
+struct ByteSnapshot {
+    value: bytes
+    chunks: list<bytes>
+    lookup: map<bytes, bytes>
+}
+
+test {
+    fn byte_scalar(value: bytes) -> bytes => pass_through(value)
+    fn byte_atomic(value: atomic<bytes>) -> bytes => pass_through(value)
+    fn byte_atomic_result(value: bytes) -> atomic<bytes> => pass_through(value)
+
+    test byte_publications_preserve_empty_equal_and_distinct_ticks {
+        let empty: bytes = bytes()
+        let first: bytes = bytes([0, 255])
+        let second: bytes = bytes([0, 254])
+        assert eval(byte_scalar, [_, empty, empty, _, first, first, second, _]) == [
+            _, empty, empty, _, first, first, second, _
+        ]
+        assert eval(byte_scalar, [_, _, _]) == [_, _, _]
+        assert eval(byte_scalar, []) == []
+    }
+
+    test byte_atomic_and_delta_spellings_keep_one_scalar_identity {
+        let value: delta<atomic<bytes>> = bytes([0, 255])
+        let empty: delta<bytes> = bytes()
+        assert eval(byte_atomic, [value, _, value, empty]) == [value, _, value, empty]
+        assert eval(byte_atomic_result, [empty, empty, _, value]) == [empty, empty, _, value]
+    }
+
+    const fn byte_list_value(value: list<i64>) -> bytes { return bytes(value) }
+    fn byte_list_conversion(value: atomic<list<i64>>) -> bytes {
+        when { return bytes(value) }
+    }
+    fn byte_helper_conversion(value: atomic<list<i64>>) -> bytes {
+        when { return byte_list_value(value) }
+    }
+
+    test byte_construction_retains_fixed_and_growing_ordinary_lists {
+        let fixed: list<i64, 3> = [0, 128, 255]
+        let fixed_empty: list<i64, 0> = []
+        assert bytes(fixed) == bytes([0, 128, 255])
+        assert bytes(fixed_empty) == bytes()
+        assert bytes([]) == bytes()
+        var source: list<i64> = []
+        push(source, 0)
+        let first: bytes = bytes(source)
+        push(source, 255)
+        let second: bytes = byte_list_value(source)
+        source = []
+        push(source, 128)
+        assert first == bytes([0])
+        assert second == bytes([0, 255])
+        assert bytes(source) == bytes([128])
+        assert eval(byte_list_conversion, [[], [0], _, [0, 255], [0, 255]]) == [
+            bytes(), bytes([0]), _, bytes([0, 255]), bytes([0, 255])
+        ]
+        assert eval(byte_helper_conversion, [[255, 0], [], _]) == [bytes([255, 0]), bytes(), _]
+    }
+
+    test byte_length_equality_and_order_use_exact_unsigned_octets {
+        assert len(bytes()) == 0
+        assert len(bytes([0, 0, 255])) == 3
+        assert bytes([0, 255]) == bytes([0, 255])
+        assert bytes([0]) != bytes([0, 0])
+        assert bytes([0, 255]) != bytes([255, 0])
+        assert bytes() < bytes([0])
+        assert bytes([0]) < bytes([0, 0])
+        assert bytes([127]) < bytes([128])
+        assert bytes([0, 255]) < bytes([1, 0])
+        assert bytes([255]) > bytes([128, 255])
+        assert bytes([0, 255]) <= bytes([0, 255])
+    }
+
+    fn byte_members(value: set<bytes>) -> set<bytes> => pass_through(value)
+    fn byte_keys(value: map<bytes, bytes>) -> map<bytes, bytes> => pass_through(value)
+
+    test byte_members_and_reconstructed_keys_use_content_identity {
+        let first: bytes = bytes([0, 255])
+        let same: bytes = bytes([0, 255])
+        let empty: bytes = bytes()
+        assert eval(byte_members, [
+            delta<set<bytes>>(added: [first, empty]), _,
+            delta<set<bytes>>(removed: [same]),
+            delta<set<bytes>>(added: [same], removed: [empty]),
+            delta<set<bytes>>(removed: [first])
+        ]) == [
+            delta<set<bytes>>(added: [empty, same]), _,
+            delta<set<bytes>>(removed: [first]),
+            delta<set<bytes>>(removed: [empty], added: [first]),
+            delta<set<bytes>>(removed: [same])
+        ]
+        assert eval(byte_keys, [
+            delta<map<bytes, bytes>>(upsert: [first: first, empty: empty]),
+            delta<map<bytes, bytes>>(upsert: [same: empty]), _,
+            delta<map<bytes, bytes>>(remove: [same]),
+            delta<map<bytes, bytes>>(upsert: [first: first])
+        ]) == [
+            delta<map<bytes, bytes>>(upsert: [empty: empty, same: first]),
+            delta<map<bytes, bytes>>(upsert: [first: empty]), _,
+            delta<map<bytes, bytes>>(remove: [first]),
+            delta<map<bytes, bytes>>(upsert: [same: first])
+        ]
+    }
+
+    fn byte_fixed(value: list<atomic<bytes>, 2>) -> list<bytes, 2> => pass_through(value)
+    fn byte_tuple(value: tuple<bytes, i64>) -> tuple<bytes, i64> => pass_through(value)
+    fn byte_fields(value: ByteFields) -> ByteFields => pass_through(value)
+
+    test byte_structural_children_keep_sparse_omissions_and_equal_ticks {
+        let value: bytes = bytes([255, 0])
+        assert eval(byte_fixed, [
+            delta<list<bytes, 2>>(items: [1: bytes()]),
+            delta<list<atomic<bytes>, 2>>(items: [0: value]), _,
+            delta<list<bytes, 2>>(items: [1: bytes()])
+        ]) == [
+            delta<list<atomic<bytes>, 2>>(items: [1: bytes()]),
+            delta<list<bytes, 2>>(items: [0: value]), _,
+            delta<list<bytes, 2>>(items: [1: bytes()])
+        ]
+        assert eval(byte_tuple, [
+            delta<tuple<bytes, i64>>(items: [0: bytes()]), _,
+            delta<tuple<bytes, i64>>(items: [1: 7]),
+            delta<tuple<bytes, i64>>(items: [0: value])
+        ]) == [
+            delta<tuple<bytes, i64>>(items: [0: bytes()]), _,
+            delta<tuple<bytes, i64>>(items: [1: 7]),
+            delta<tuple<bytes, i64>>(items: [0: value])
+        ]
+        assert eval(byte_fields, [
+            delta<ByteFields>(left: value), delta<ByteFields>(right: bytes()), _,
+            delta<ByteFields>(left: value)
+        ]) == [
+            delta<ByteFields>(left: value), delta<ByteFields>(right: bytes()), _,
+            delta<ByteFields>(left: value)
+        ]
+    }
+
+    fn byte_snapshot(value: atomic<ByteSnapshot>) -> atomic<ByteSnapshot> => pass_through(value)
+
+    test byte_atomic_compound_values_retain_independent_complete_snapshots {
+        var octets: list<i64> = []
+        push(octets, 0)
+        var source: ByteSnapshot = ByteSnapshot(
+            value: bytes(octets), chunks: [bytes([0])],
+            lookup: map<bytes, bytes>(items: [bytes([0]): bytes([255])])
+        )
+        let retained: ByteSnapshot = source
+        push(octets, 255)
+        source.value = bytes(octets)
+        push(source.chunks, bytes())
+        source.lookup = map<bytes, bytes>(items: [])
+        assert retained.value == bytes([0])
+        assert len(retained.chunks) == 1
+        assert eval(byte_snapshot, [retained, retained, _, source]) == [
+            ByteSnapshot(value: bytes([0]), chunks: [bytes([0])], lookup: map<bytes, bytes>(items: [bytes([0]): bytes([255])])),
+            ByteSnapshot(value: bytes([0]), chunks: [bytes([0])], lookup: map<bytes, bytes>(items: [bytes([0]): bytes([255])])), _,
+            ByteSnapshot(value: bytes([0, 255]), chunks: [bytes([0]), bytes()], lookup: map<bytes, bytes>(items: []))
+        ]
+    }
+
+    fn byte_arrivals(value: rolling<bytes, 2>) -> rolling<bytes, 2> => pass_through(value)
+    test byte_rolling_arrivals_keep_empty_equal_and_silent_positions {
+        assert eval(byte_arrivals, [_, bytes(), bytes(), _, bytes([255]), bytes([255]), _]) == [
+            _, bytes(), bytes(), _, bytes([255]), bytes([255]), _
+        ]
+    }
+
+    fn byte_replay_context(tick: i64) { when { } }
+    fn byte_replayed(tick: i64, const samples: list<TimedValue<bytes>>) -> atomic<bytes> {
+        byte_replay_context(tick)
+        replay(samples)
+    }
+
+    test byte_timed_captures_survive_source_sample_changes_and_fresh_runs {
+        var octets: list<i64> = []
+        push(octets, 0)
+        var sample: TimedValue<atomic<bytes>> = TimedValue<atomic<bytes>>(
+            time: @1970-01-01T00:00:00.000001Z, value: bytes(octets)
+        )
+        var samples: list<TimedValue<bytes>> = []
+        push(samples, sample)
+        sample.time = @1970-01-01T00:00:00.000003Z
+        push(samples, sample)
+        push(octets, 255)
+        sample.value = bytes(octets)
+        sample.time = @1970-01-01T00:00:00.000004Z
+        push(samples, sample)
+        sample.value = bytes()
+        octets = []
+        assert eval(byte_replayed, tick: [1, 1, 1, 1, 1], samples: samples) == [
+            bytes([0]), _, bytes([0]), bytes([0, 255]), _
+        ]
+        assert eval(byte_replayed, tick: [1, 1, 1, 1, 1], samples: samples) == [
+            bytes([0]), _, bytes([0]), bytes([0, 255]), _
+        ]
+        let empty: list<TimedValue<bytes>> = []
+        assert eval(byte_replayed, tick: [1, 1], samples: empty) == [_, _]
+    }
+
+    fn byte_record_matches(trigger: i64, const expected: list<TimedValue<bytes>>) -> bool {
+        inject global_state
+        when {
+            let captured: list<TimedValue<bytes>> = get(global_state, "bytes.recording")
+            if len(captured) != len(expected) { return false }
+            var index: i64 = 0
+            while index < len(expected) {
+                if captured[index].time != expected[index].time { return false }
+                if captured[index].value != expected[index].value { return false }
+                index += 1
+            }
+            return true
+        }
+    }
+    fn byte_recorded(value: bytes, trigger: i64, const expected: list<TimedValue<bytes>>) -> bool {
+        record(pass_through(value), "bytes.recording")
+        byte_record_matches(trigger, expected)
+    }
+
+    # The observer runs after all writes, independently of same-cycle sink ordering.
+    test byte_recording_keeps_exact_values_times_and_resets_on_fresh_runs {
+        var expected: list<TimedValue<bytes>> = []
+        push(expected, TimedValue<bytes>(time: @1970-01-01T00:00:00.000001Z, value: bytes()))
+        push(expected, TimedValue<bytes>(time: @1970-01-01T00:00:00.000003Z, value: bytes()))
+        push(expected, TimedValue<bytes>(time: @1970-01-01T00:00:00.000004Z, value: bytes([0, 255])))
+        assert eval(byte_recorded,
+            value: [bytes(), _, bytes(), bytes([0, 255])],
+            trigger: [_, _, _, _, 1], expected: expected
+        ) == [_, _, _, _, true]
+        let empty: list<TimedValue<bytes>> = []
+        assert eval(byte_recorded, value: [_, _, _], trigger: [_, _, _, 1], expected: empty) == [_, _, _, true]
+        assert eval(byte_recorded, value: [], trigger: [_, 1], expected: empty) == [_, true]
+    }
+
+    test byte_range_failures_execute_in_nodes_and_ordinary_helpers {
+        assert raises("value.byte_range") { eval(byte_list_conversion, [[0], [256]]) }
+        assert raises("value.byte_range") { eval(byte_list_conversion, [[-1]]) }
+        assert raises("value.byte_range") { eval(byte_helper_conversion, [[256]]) }
+        assert raises("value.byte_range") { assert len(bytes([256])) == 0 }
+        assert raises("value.byte_range") { assert len(byte_list_value([-1])) == 0 }
+    }
+
+    test byte_constructor_failure_preserves_completed_ordinary_calls {
+        var retained: bytes = bytes()
+        assert raises("value.byte_range") {
+            retained = byte_list_value([0, 255])
+            assert len(byte_list_value([256])) == 0
+            retained = bytes([128])
+        }
+        assert retained == bytes([0, 255])
+        assert len(retained) == 2
+    }
+}
