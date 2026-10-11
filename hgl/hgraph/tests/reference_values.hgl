@@ -5,7 +5,7 @@ struct ReferenceFields { left: i64
 
 test {
     fn reference_relay(value: ref<i64>) -> ref<i64> {
-        when valid(value) && modified(value) { return value }
+        when { return value }
     }
     fn reference_read(value: i64) -> i64 {
         when { return delta_value(value) }
@@ -41,7 +41,7 @@ test {
     }
 
     fn reference_choose(index: i64, first: ref<i64>, second: ref<i64>) -> ref<i64> {
-        when valid(index, first, second) && (modified(index) || modified(first) || modified(second)) {
+        when {
             if index == 0 { return first }
             return second
         }
@@ -125,7 +125,7 @@ test {
     # Holding a designation uses the node's ordinary REF output, not value state.
     fn reference_first_designation(value: ref<i64>) -> ref<i64> {
         inject out
-        when valid(value) && modified(value) {
+        when {
             if !valid(out) { return value }
         }
     }
