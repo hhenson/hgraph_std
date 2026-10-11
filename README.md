@@ -19,6 +19,7 @@ no Python, C++ or Rust implementation and selects no target provider.
 - [Direct and boxed Boolean equality, hash and total order](hgl/hgraph/tests/any_bool_values.hgl)
 - [Any contained-type capability checks and empty-container edges](docs/any-capability-edges.md)
 - [Graph-wired reference identity, following and retained designations](hgl/hgraph/tests/reference_values.hgl)
+- [Structural consumers following held REF designations](docs/reference-structural-values.md)
 - [Native support](docs/native-support.md)
 
 The [language specification](https://github.com/hhenson/hgraph_spec) defines
