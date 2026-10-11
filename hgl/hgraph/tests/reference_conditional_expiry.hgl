@@ -4,7 +4,7 @@ module hgraph.std part reference_conditional_expiry_tests
 # No raw REF eval inputs, empty REF construction or REF ordinary state.
 test {
     fn expiry_reference(value: ref<i64>) -> ref<i64> {
-        when valid(value) && modified(value) { return value }
+        when { return value }
     }
     fn expiry_branch_result(enabled: bool, first: i64, second: i64) -> ref<i64> {
         var selected: ref<i64>
@@ -20,7 +20,7 @@ test {
     }
     fn expiry_first_designation(value: ref<i64>) -> ref<i64> {
         state captured: bool = false
-        when valid(value) && modified(value) {
+        when {
             # Expiry cannot make the node capture a later fresh designation.
             if !captured {
                 captured = true
