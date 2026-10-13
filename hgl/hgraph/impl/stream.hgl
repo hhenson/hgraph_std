@@ -240,7 +240,8 @@ impl fn sum_reset(ts: i64, reset: bool) -> i64 {
     }
     when valid(ts) && modified(ts) {
         if valid(out) { return out + ts }
-        return ts
+        # Seeded from the additive identity, as sum is and as the native node is.
+        return 0 + ts
     }
 }
 
@@ -269,7 +270,9 @@ impl fn sum_reset(ts: f64, reset: bool) -> f64 {
     }
     when valid(ts) && modified(ts) {
         if valid(out) { return out + ts }
-        return ts
+        # Seeded from the additive identity, as sum is and as the native node
+        # is: a first -0.0 publishes 0.0.
+        return 0.0 + ts
     }
 }
 
