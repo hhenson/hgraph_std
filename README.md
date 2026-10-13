@@ -21,6 +21,7 @@ no Python, C++ or Rust implementation and selects no target provider.
 - [Any contained-type capability checks and empty-container edges](docs/any-capability-edges.md)
 - [Graph-wired reference identity, following and retained designations](hgl/hgraph/tests/reference_values.hgl)
 - [Child projections through references during graph wiring](hgl/hgraph/tests/reference_projection_values.hgl)
+- [Fixed-list selection and forwarding of REF entries](hgl/hgraph/tests/reference_list_routing.hgl), following the Spec's [routing contract](https://github.com/hhenson/hgraph_spec/blob/69a2f8ca7b842a0fb4b62003d91dfa1b9eb122b3/language/docs/design/type-extensions.md#selecting-and-forwarding-a-reference).
 - [Held references to bytes, Any and native owning leaves](docs/reference-leaf-values.md)
 - [Structural consumers following held REF designations](docs/reference-structural-values.md)
 - [Owned REF output routes and exported child trees](docs/reference-owner-export-values.md)
