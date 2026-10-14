@@ -16,10 +16,10 @@ test {
         when { return is_err(value) }
     }
     fn capture_test_error_event(failure: error, step: i64) -> bool {
-        when modified(step) { return modified(failure) }
+        when modified(step) && valid(step) { return modified(failure) }
     }
     fn capture_test_error_present(failure: error, step: i64) -> bool {
-        when modified(step) { return valid(failure) }
+        when modified(step) && valid(step) { return valid(failure) }
     }
     fn capture_test_message(failure: error, step: i64) -> str {
         when modified(step) && valid(failure) { return failure.capture_test_message }
