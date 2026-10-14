@@ -116,7 +116,7 @@ native const fn shift_left(lhs: i64, rhs: i64) -> i64
 native const fn shift_right(lhs: i64, rhs: i64) -> i64
 
 # Python slice positions: a negative index counts from the end, positions are
-# clamped to the string, and an inverted range is empty. Never raises.
+# clamped to the string, and an inverted range is empty.
 native const fn slice(value: str, begin: i64, end: i64) -> str
 
 test {
@@ -207,14 +207,14 @@ Notes:
 native const fn print_line(text: str)
 
 /**
-Raise an error carrying ``message``.
+Fail the current evaluation with ``message``.
 
 Args:
     message: The error's message.
 
-Raises:
-    Always. The raise ends the evaluation under hgraph's node error model
-    (ADR 0009); ``assert_`` uses it for a false condition.
+Failure:
+    Always leaves the current evaluation through its failure channel.
+    ``assert_`` uses this for a false condition.
 */
 native const fn raise_error(message: str)
 
