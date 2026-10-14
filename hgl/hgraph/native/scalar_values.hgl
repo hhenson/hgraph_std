@@ -30,7 +30,7 @@ native const fn absolute(value: f64) -> f64
 
 native const fn logarithm(value: f64) -> f64
 
-native const fn round_decimal(value: f64, digits: i64) -> f64 throws
+native const fn round_decimal(value: f64, digits: i64) -> f64
 
 native const fn invert(value: bool) -> i64
 
@@ -100,28 +100,23 @@ test {
 
 native const fn as_int(value: bool) -> i64
 
-# Checked kernels bind the reviewed scalar algorithms in hgraph's lifted
-# kernel library. `throws` records that a call may raise: a negative or
-# too-large shift count, a negative integer exponent, an overflowing integer
-# power, and zero raised to a negative power are all errors, exactly as the
-# native temporal operators report them. The raise ends the evaluation under
-# hgraph's node error model (ADR 0009).
+# Strict arithmetic rejects invalid shift counts, negative integer exponents,
+# overflowing integer powers and zero raised to a negative power.
+# Failure leaves the current evaluation through the node failure channel.
 
-# Configuration checks a node runs in `start`, as the native stream nodes do.
-# A value native is available in every hook; the raise ends the start under
-# hgraph's node error model with the native message (ADR 0009).
-native const fn require_positive_delay(delay: duration) throws
+# Start-time delay validation follows the lifecycle failure rules.
+native const fn require_positive_delay(delay: duration)
 
-native const fn power(lhs: i64, rhs: i64) -> i64 throws
+native const fn power(lhs: i64, rhs: i64) -> i64
 
-native const fn power(lhs: f64, rhs: f64) -> f64 throws
+native const fn power(lhs: f64, rhs: f64) -> f64
 
-native const fn shift_left(lhs: i64, rhs: i64) -> i64 throws
+native const fn shift_left(lhs: i64, rhs: i64) -> i64
 
-native const fn shift_right(lhs: i64, rhs: i64) -> i64 throws
+native const fn shift_right(lhs: i64, rhs: i64) -> i64
 
 # Python slice positions: a negative index counts from the end, positions are
-# clamped to the string, and an inverted range is empty. Never raises.
+# clamped to the string, and an inverted range is empty.
 native const fn slice(value: str, begin: i64, end: i64) -> str
 
 test {
@@ -212,16 +207,16 @@ Notes:
 native const fn print_line(text: str)
 
 /**
-Raise an error carrying ``message``.
+Fail the current evaluation with ``message``.
 
 Args:
     message: The error's message.
 
-Raises:
-    Always. The raise ends the evaluation under hgraph's node error model
-    (ADR 0009); ``assert_`` uses it for a false condition.
+Failure:
+    Always leaves the current evaluation through its failure channel.
+    ``assert_`` uses this for a false condition.
 */
-native const fn raise_error(message: str) throws
+native const fn raise_error(message: str)
 
 test {
     const fn text_of_bool(value: bool) -> str => as_str(value)

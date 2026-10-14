@@ -529,11 +529,7 @@ impl fn substr(s: str, begin: i64, end: i64) -> str {
     when { return native::slice(s, begin, end) }
 }
 
-# Checked arithmetic: the native `throws` bindings raise on a negative
-# integer exponent, an overflowing integer power, zero raised to a negative
-# power, and a negative or too-large shift count. The raise ends the
-# evaluation under hgraph's node error model (ADR 0009); there is no divide-
-# by-zero policy parameter on these parallel identities yet.
+# Strict arithmetic failures leave the current node evaluation.
 impl fn pow_(lhs: i64, rhs: i64) -> i64 {
     when { return native::power(lhs, rhs) }
 }
