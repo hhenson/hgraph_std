@@ -3,7 +3,7 @@ module hgraph.std part error_capture_tests
 test {
 
     const fn capture_test_checked(value: i64) -> result<i64, error> {
-        if value < 0 { return err(error(capture_test_message: "negative price")) }
+        if value < 0 { return err(error(message: "negative price")) }
         return ok(value)
     }
     fn capture_test_required(value: i64) -> i64 {
@@ -22,7 +22,7 @@ test {
         when modified(step) && valid(step) { return valid(failure) }
     }
     fn capture_test_message(failure: error, step: i64) -> str {
-        when modified(step) && valid(failure) { return failure.capture_test_message }
+        when modified(step) && valid(failure) { return failure.message }
     }
     fn capture_test_origin_is_current(failure: error, step: i64) -> bool {
         inject clock
