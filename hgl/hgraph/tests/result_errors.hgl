@@ -71,3 +71,189 @@ test {
         }
     }
 }
+
+test {
+    struct BoxedOutcomeTestHolder {
+        outcome: result<list<i64>, error>
+        diagnostic: error
+    }
+
+    fn boxed_outcome_test_forward(value: any) -> any {
+        when { return delta_value(value) }
+    }
+    fn boxed_outcome_test_box_result(value: result<i64, error>) -> any {
+        when { return any(value) }
+    }
+    fn boxed_outcome_test_box_text_result(value: result<i64, str>) -> any {
+        when { return any(value) }
+    }
+    fn boxed_outcome_test_box_error(value: error) -> any {
+        when { return any(value) }
+    }
+
+    test boxed_outcomes_keep_tags_complete_type_identity_and_diagnostics {
+        let coded = error(code: "value.missing_key", message: "missing item")
+        let uncoded = error(message: "missing item")
+        let success: result<i64, error> = ok(7)
+        let same_success: result<i64, error> = ok(7)
+        let text_success: result<i64, str> = ok(7)
+        let failure: result<i64, error> = err(coded)
+        let same_failure: result<i64, error> = err(error(code: "value.missing_key", message: "missing item"))
+        let uncoded_failure: result<i64, error> = err(uncoded)
+        let text_failure: result<i64, str> = err("missing item")
+        let same_text_failure: result<i64, str> = err("missing item")
+        assert any(success) == any(same_success)
+        assert any(failure) == any(same_failure)
+        assert any(text_failure) == any(same_text_failure)
+        assert any(success) != any(failure)
+        # An unselected E still belongs to result<T, E>'s canonical identity.
+        assert any(success) != any(text_success)
+        assert any(success) != any(7)
+        assert any(failure) != any(coded)
+        assert any(failure) != any(uncoded_failure)
+        assert any(text_failure) != any("missing item")
+        assert any(coded) == any(error(code: "value.missing_key", message: "missing item"))
+        assert any(uncoded) == any(error(code: null, message: "missing item"))
+        assert any(coded) != any(uncoded)
+        assert any(coded) != any(error(code: "value.capability", message: "missing item"))
+        assert any(coded) != any(error(code: "value.missing_key", message: "different item"))
+    }
+
+    test boxed_outcomes_publish_equal_values_and_preserve_silence {
+        let success: result<i64, error> = ok(7)
+        let failure: result<i64, error> = err(error(message: "failure"))
+        let text_success: result<i64, str> = ok(7)
+        let text_failure: result<i64, str> = err("failure")
+        let coded = error(code: "value.missing_key", message: "failure")
+        let uncoded = error(message: "failure")
+        assert eval(boxed_outcome_test_box_result, value: [success, failure, failure, _, success]) == [
+            any(success), any(failure), any(failure), _, any(success)
+        ]
+        assert eval(boxed_outcome_test_box_text_result, value: [text_success, text_failure, text_failure, _, text_success]) == [
+            any(text_success), any(text_failure), any(text_failure), _, any(text_success)
+        ]
+        assert eval(boxed_outcome_test_box_error, value: [coded, coded, _, uncoded, uncoded]) == [
+            any(coded), any(coded), _, any(uncoded), any(uncoded)
+        ]
+        assert eval(boxed_outcome_test_forward, value: [
+            _, any(success), any(success), any(text_success), any(failure), any(failure), _,
+            any(coded), any(uncoded), any(text_failure), any(), _
+        ]) == [
+            _, any(success), any(success), any(text_success), any(failure), any(failure), _,
+            any(coded), any(uncoded), any(text_failure), any(), _
+        ]
+    }
+
+    test boxed_results_do_not_inherit_payload_order_or_hash {
+        let success: result<i64, str> = ok(7)
+        let failure: result<i64, str> = err("failure")
+        # Result supplies equality, but does not inherit its payloads' other capabilities.
+        assert raises("value.capability") { assert any(success) < any(success) }
+        assert raises("value.capability") { assert any(success) <= any(success) }
+        assert raises("value.capability") { assert any(failure) > any(failure) }
+        assert raises("value.capability") { assert any(failure) >= any(failure) }
+        assert raises("value.capability") {
+            let members: set<any> = set<any>(items: [any(success)])
+            assert any(members) != any(0)
+        }
+        assert raises("value.capability") {
+            let entries: map<any, i64> = map<any, i64>(items: [any(failure): 1])
+            assert any(entries) != any(0)
+        }
+    }
+
+    const fn boxed_outcome_test_checked(value: i64) -> result<i64, error> {
+        if value < 0 { return err(error(code: "value.missing_key", message: "missing item")) }
+        return ok(value)
+    }
+    fn boxed_outcome_test_required(value: i64) -> i64 {
+        when { return boxed_outcome_test_checked(value)? }
+    }
+    # Check provenance before boxing; Any equality observes the diagnostic alone.
+    fn boxed_outcome_test_contextual_error(failure: error) -> any {
+        inject clock
+        when {
+            let origin = failure.context
+            if origin != null {
+                if origin.phase == "evaluate" && origin.evaluation_time == clock.evaluation_time {
+                    return any(failure)
+                }
+            }
+        }
+    }
+    fn boxed_outcome_test_contextual_err(failure: error) -> any {
+        inject clock
+        when {
+            let origin = failure.context
+            if origin != null {
+                if origin.phase == "evaluate" && origin.evaluation_time == clock.evaluation_time {
+                    let outcome: result<i64, error> = err(failure)
+                    return any(outcome)
+                }
+            }
+        }
+    }
+    fn boxed_outcome_test_captured_error(value: i64) -> any {
+        let seen = capture(boxed_outcome_test_required, value)
+        boxed_outcome_test_contextual_error(seen.error)
+    }
+    fn boxed_outcome_test_captured_err(value: i64) -> any {
+        let seen = capture(boxed_outcome_test_required, value)
+        boxed_outcome_test_contextual_err(seen.error)
+    }
+
+    test boxed_captured_diagnostics_ignore_context_without_deduplicating_ticks {
+        let local = error(code: "value.missing_key", message: "missing item")
+        let local_failure: result<i64, error> = err(local)
+        assert local.context == null
+        let errors = eval(boxed_outcome_test_captured_error, value: [-1, -1, _, 7, -1, _])
+        assert errors == [any(local), any(local), _, _, any(local), _]
+        let failures = eval(boxed_outcome_test_captured_err, value: [-1, -1, _, 7, -1, _])
+        assert failures == [any(local_failure), any(local_failure), _, _, any(local_failure), _]
+    }
+
+    test boxed_outcomes_retain_owners_across_replacement_collection_mutation_and_teardown {
+        let expected: result<list<i64>, error> = ok([1, 2])
+        let diagnostic = error(message: "retained diagnostic")
+        var source: result<list<i64>, error> = expected
+        let retained: any = any(source)
+        var holder: BoxedOutcomeTestHolder = BoxedOutcomeTestHolder(outcome: source, diagnostic: diagnostic)
+        let retained_holder: any = any(holder)
+        let holders: list<BoxedOutcomeTestHolder> = [holder]
+        let retained_holders: any = any(holders)
+        var boxes: list<any> = [retained, retained_holder, retained_holders, any(diagnostic)]
+        let retained_boxes: any = any(boxes)
+        let recorded = eval(boxed_outcome_test_forward, value: [retained_boxes, retained_holder, _, retained])
+        source = err(error(message: "replacement"))
+        holder.outcome = source
+        holder.diagnostic = error(message: "replacement diagnostic")
+        push(boxes, any(source))
+        push(boxes, any(holder))
+        push(boxes, any(7))
+        assert retained == any(expected)
+        assert retained != boxes[4]
+        let expected_holder: BoxedOutcomeTestHolder = BoxedOutcomeTestHolder(outcome: expected, diagnostic: diagnostic)
+        let expected_holders: list<BoxedOutcomeTestHolder> = [expected_holder]
+        assert retained_holder == any(expected_holder)
+        assert retained_holder != any(holder)
+        assert retained_holders == any(expected_holders)
+        let expected_boxes: list<any> = [any(expected), any(expected_holder), any(expected_holders), any(diagnostic)]
+        assert retained_boxes == any(expected_boxes)
+        assert retained_boxes != any(boxes)
+        # Eval has stopped its graph; its recorded boxes remain independently owned.
+        assert recorded == [any(expected_boxes), any(expected_holder), _, any(expected)]
+        let first = recorded[0]
+        assert first != null
+        if first != null {
+            assert eval(boxed_outcome_test_forward, value: [first, _, first]) == [
+                any(expected_boxes), _, any(expected_boxes)
+            ]
+        }
+        var text_source: result<i64, str> = err("retained text")
+        let retained_text: any = any(text_source)
+        text_source = err("replacement text")
+        let expected_text: result<i64, str> = err("retained text")
+        assert retained_text == any(expected_text)
+        assert retained_text != any(text_source)
+    }
+}
