@@ -2,41 +2,41 @@ module hgraph.std part result_error_tests
 
 test {
 
-    const fn price(book: map<str, i64>, key: str) -> result<i64, error> {
+    const fn result_test_price(book: map<str, i64>, key: str) -> result<i64, error> {
         let item = get(book, key)
         if item == null {
             return err(error(code: "value.missing_key", message: "missing price"))
         }
         return ok(item)
     }
-    const fn doubled(book: map<str, i64>, key: str) -> result<i64, error> {
-        let item = price(book, key)?
+    const fn result_test_doubled(book: map<str, i64>, key: str) -> result<i64, error> {
+        let item = result_test_price(book, key)?
         return ok(item * 2)
     }
-    const fn propagate_before_strict(book: map<str, i64>, key: str) -> result<i64, error> {
-        let item = price(book, key)?
+    const fn result_test_propagate_before_strict(book: map<str, i64>, key: str) -> result<i64, error> {
+        let item = result_test_price(book, key)?
         return ok(item + at(map<str, i64>(items: []), "unreachable-on-Err"))
     }
-    const fn recovered(book: map<str, i64>, key: str) -> i64 {
-        let outcome = price(book, key)
-        if is_err(outcome) { return 0 }
-        return outcome.value
+    const fn result_test_recovered(book: map<str, i64>, key: str) -> i64 {
+        let result_test_outcome = result_test_price(book, key)
+        if is_err(result_test_outcome) { return 0 }
+        return result_test_outcome.value
     }
-    const fn diagnostic(outcome: result<i64, error>) -> str {
-        if is_err(outcome) { return outcome.error.message }
+    const fn result_test_diagnostic(result_test_outcome: result<i64, error>) -> str {
+        if is_err(result_test_outcome) { return result_test_outcome.error.message }
         return "ok"
     }
-    fn required(book: atomic<map<str, i64>>, key: str) -> i64 {
-        when { return price(book, key)? }
+    fn result_test_required(book: atomic<map<str, i64>>, key: str) -> i64 {
+        when { return result_test_price(book, key)? }
     }
-    fn outcome(book: atomic<map<str, i64>>, key: str) -> result<i64, error> {
-        when { return price(book, key) }
+    fn result_test_outcome(book: atomic<map<str, i64>>, key: str) -> result<i64, error> {
+        when { return result_test_price(book, key) }
     }
-    fn graph_is_failure(value: result<i64, error>) -> bool => is_err(value)
-    fn alias_outcome(value: atomic<result<i64, error>>) -> result<i64, error> {
+    fn result_test_graph_is_failure(value: result<i64, error>) -> bool => is_err(value)
+    fn result_test_alias_outcome(value: atomic<result<i64, error>>) -> result<i64, error> {
         when { return value }
     }
-    fn alias_error(value: atomic<error>) -> error {
+    fn result_test_alias_error(value: atomic<error>) -> error {
         when { return value }
     }
 
@@ -46,13 +46,13 @@ test {
         let success: result<i64, error> = ok(20)
         let failure: result<i64, error> =
             err(error(code: "value.missing_key", message: "missing price"))
-        assert doubled(full, "X") == success
-        assert doubled(empty, "X") == failure
-        assert propagate_before_strict(empty, "X") == failure
-        assert raises("value.missing_key") { propagate_before_strict(full, "X") }
-        assert recovered(full, "X") == 10
-        assert recovered(empty, "X") == 0
-        assert diagnostic(failure) == "missing price"
+        assert result_test_doubled(full, "X") == success
+        assert result_test_doubled(empty, "X") == failure
+        assert result_test_propagate_before_strict(empty, "X") == failure
+        assert raises("value.missing_key") { result_test_propagate_before_strict(full, "X") }
+        assert result_test_recovered(full, "X") == 10
+        assert result_test_recovered(empty, "X") == 0
+        assert result_test_diagnostic(failure) == "missing price"
         let uncoded = error(message: "domain failure")
         assert uncoded.code == null
         assert uncoded.context == null
@@ -60,14 +60,14 @@ test {
         assert code != null
         if code != null { assert code == "value.missing_key" }
         let ten: result<i64, error> = ok(10)
-        assert eval(graph_is_failure, value: [_, ten, failure, failure]) == [_, false, true, true]
-        assert eval(alias_outcome, value: [ten, failure]) == [ten, failure]
-        assert eval(alias_error, value: [uncoded, uncoded]) == [uncoded, uncoded]
-        assert eval(outcome, book: [full, empty, empty, _], key: ["X"]) == [
+        assert eval(result_test_graph_is_failure, value: [_, ten, failure, failure]) == [_, false, true, true]
+        assert eval(result_test_alias_outcome, value: [ten, failure]) == [ten, failure]
+        assert eval(result_test_alias_error, value: [uncoded, uncoded]) == [uncoded, uncoded]
+        assert eval(result_test_outcome, book: [full, empty, empty, _], key: ["X"]) == [
             ten, failure, failure, _
         ]
         assert raises("value.missing_key") {
-            eval(required, book: [empty], key: ["X"])
+            eval(result_test_required, book: [empty], key: ["X"])
         }
     }
 }
