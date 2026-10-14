@@ -29,7 +29,7 @@ test {
         when modified(step) && valid(failure) {
             let origin = failure.context
             if origin != null {
-                return origin.phase == "evaluation" && origin.evaluation_time == clock.evaluation_time
+                return origin.phase == "evaluate" && origin.evaluation_time == clock.evaluation_time
             }
         }
     }
