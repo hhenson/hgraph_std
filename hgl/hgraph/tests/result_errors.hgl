@@ -154,11 +154,11 @@ test {
         assert raises("value.capability") { assert any(failure) >= any(failure) }
         assert raises("value.capability") {
             let members: set<any> = set<any>(items: [any(success)])
-            assert len(members) == 1
+            assert any(members) != any(0)
         }
         assert raises("value.capability") {
             let entries: map<any, i64> = map<any, i64>(items: [any(failure): 1])
-            assert len(entries) == 1
+            assert any(entries) != any(0)
         }
     }
 
@@ -227,11 +227,11 @@ test {
         source = err(error(message: "replacement"))
         holder.outcome = source
         holder.diagnostic = error(message: "replacement diagnostic")
-        boxes[0] = any(source)
-        boxes[1] = any(holder)
+        push(boxes, any(source))
+        push(boxes, any(holder))
         push(boxes, any(7))
         assert retained == any(expected)
-        assert retained != boxes[0]
+        assert retained != boxes[4]
         let expected_holder: BoxedOutcomeTestHolder = BoxedOutcomeTestHolder(outcome: expected, diagnostic: diagnostic)
         let expected_holders: list<BoxedOutcomeTestHolder> = [expected_holder]
         assert retained_holder == any(expected_holder)
